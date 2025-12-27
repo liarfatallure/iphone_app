@@ -11,105 +11,96 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        :root { 
-            --ios-blue: #007AFF; 
-            --ios-red: #FF3B30; 
-            --ios-green: #34C759; 
-            --light-green: #E2F9E1; 
-            --light-red: #FFE5E5;
-        }
+        :root { --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; }
         body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 0; padding-bottom: 50px; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
         
-        /* 1. 動態背景的 Header */
-        .header-card { 
-            color: #1C1C1E; text-align: center; 
-            padding: 25px 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
-            transition: background-color 0.3s ease; /* 顏色轉換動畫 */
-        }
-        .header-card.positive { background-color: var(--ios-green); color: white; }
-        .header-card.negative { background-color: var(--ios-red); color: white; }
-        .header-card.neutral { background-color: var(--ios-blue); color: white; }
-
-        .current-month-label { font-size: 1.1rem; opacity: 0.9; display: block; margin-bottom: 5px; }
+        /* Header 顏色樣式 */
+        .header-card { color: white; text-align: center; padding: 25px 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.3s; }
+        .positive { background-color: var(--ios-green); }
+        .negative { background-color: var(--ios-red); }
+        .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 2.5rem; font-weight: bold; display: block; }
-        .total-label { font-size: 0.9rem; opacity: 0.8; }
 
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; box-sizing: border-box; }
-        label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 12px 0 5px 5px; }
-        
-        input, select { 
-            width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; 
-            font-size: 16px; box-sizing: border-box; display: block; appearance: none;
-            -webkit-appearance: none; background-color: white;
-        }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+        label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 10px 0 5px 5px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; font-size: 16px; box-sizing: border-box; display: block; -webkit-appearance: none; background: white; }
 
-        /* 3. 結算方式組合樣式 */
-        .input-group { display: flex; gap: 8px; margin-top: 5px; }
-        .input-group select { width: 35%; }
-        .input-group input { width: 65%; }
+        /* 1 & 2. 欄位等寬排列 */
+        .input-row { display: flex; gap: 10px; margin-bottom: 5px; }
+        .input-row > * { flex: 1; width: 50%; }
 
         .add-btn { width: 100%; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 15px; }
 
-        .month-tabs { display: flex; overflow-x: auto; gap: 10px; margin: 0 15px 15px 15px; padding-bottom: 5px; }
-        .month-tab { 
-            padding: 8px 16px; background: #E5E5EA; border-radius: 20px; font-size: 14px; 
-            white-space: nowrap; color: #3A3A3C; flex-shrink: 0;
-        }
-        .month-tab.active { background: #3A3A3C; color: white; }
-
-        table { width: 100%; border-collapse: collapse; }
+        /* 3. 自定義月曆樣式 */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .cal-day { padding: 10px 0; border-radius: 8px; font-size: 14px; position: relative; }
+        .cal-header { font-weight: bold; color: #8E8E93; font-size: 12px; padding-bottom: 10px; }
+        .cal-today { background: #E5E5EA; }
+        .cal-selected { border: 2px solid var(--ios-blue); }
+        .has-record::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; font-size: 0.8rem; color: #8E8E93; border-bottom: 1px solid #E5E5EA; padding-bottom: 8px; }
-        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; vertical-align: middle; }
+        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
         .win { color: var(--ios-green); font-weight: bold; }
         .lose { color: var(--ios-red); font-weight: bold; }
-        .del-btn { color: #8E8E93; font-size: 11px; text-decoration: none; border: 0.5px solid #C6C6C8; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+        .del-btn { color: #8E8E93; font-size: 11px; border: 0.5px solid #C6C6C8; padding: 2px 5px; border-radius: 4px; text-decoration: none; }
     </style>
 </head>
 <body>
 
 <div id="header" class="header-card neutral">
-    <span class="current-month-label" id="dispMonth">----年--月</span>
+    <span id="dispMonth" style="font-size: 1.1rem; opacity: 0.9;">----年--月</span>
     <span class="total-val" id="monthTotal">0</span>
-    <span class="total-label">本月合計</span>
+    <span>本月合計</span>
 </div>
 
 <div class="container">
     <div class="card">
-        <label>選擇日期</label>
-        <input type="date" id="date">
-        
+        <div id="calendarHeader" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:20px;">❮</button>
+            <strong id="calMonthTitle">2025年12月</strong>
+            <button onclick="changeMonth(1)" style="border:none; background:none; font-size:20px;">❯</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="card">
         <label>遊戲類型</label>
         <input type="text" id="type">
-        
-        <label>結算方式</label>
-        <div class="input-group">
+
+        <label>結算方式 / 補充</label>
+        <div class="input-row">
             <select id="methodSelect">
                 <option value="底/台">底/台</option>
                 <option value="買入">買入</option>
             </select>
-            <input type="text" id="methodDetail" placeholder="補充說明">
+            <input type="text" id="methodDetail">
         </div>
         
-        <label>輸贏金額</label>
-        <input type="number" id="amount" inputmode="decimal">
+        <div class="input-row">
+            <div>
+                <label>輸贏金額</label>
+                <input type="number" id="amount" inputmode="decimal">
+            </div>
+            <div>
+                <label>地點</label>
+                <input type="text" id="location">
+            </div>
+        </div>
         
         <label>備註</label>
         <input type="text" id="note">
         
-        <button class="add-btn" onclick="addRecord()">新增紀錄</button>
+        <button class="add-btn" onclick="addRecord()">新增紀錄 (選定日期: <span id="selectedDateText"></span>)</button>
     </div>
-
-    <div class="month-tabs" id="monthTabs"></div>
 
     <div class="card">
         <table id="recordTable">
             <thead>
                 <tr>
-                    <th width="45%">日期/備註</th>
+                    <th width="45%">日期/地點/備註</th>
                     <th width="25%">方式</th>
                     <th width="30%">輸贏</th>
                 </tr>
@@ -120,69 +111,82 @@
 </div>
 
 <script>
-    document.getElementById('date').valueAsDate = new Date();
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
-    let currentMonth = ""; 
+    let viewDate = new Date(); // 目前月曆看的月份
+    let selectedDate = new Date().toISOString().split('T')[0]; // 目前點選要記錄的日期
 
-    function getMonthKey(dateStr) {
-        return dateStr.substring(0, 7);
+    function changeMonth(step) {
+        viewDate.setMonth(viewDate.getMonth() + step);
+        render();
     }
 
-    function renderTabs() {
-        const tabsContainer = document.getElementById('monthTabs');
-        const months = [...new Set(records.map(r => getMonthKey(r.date)))].sort().reverse();
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const title = document.getElementById('calMonthTitle');
+        grid.innerHTML = '';
         
-        const todayKey = getMonthKey(new Date().toISOString().split('T')[0]);
-        if (!currentMonth) currentMonth = (months.length > 0) ? months[0] : todayKey;
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+        title.innerText = `${year}年${month + 1}月`;
 
-        document.getElementById('dispMonth').innerText = currentMonth.replace('-', ' 年 ') + ' 月';
+        // 星期表頭
+        ['日','一','二','三','四','五','六'].forEach(d => {
+            grid.innerHTML += `<div class="cal-header">${d}</div>`;
+        });
 
-        tabsContainer.innerHTML = months.map(m => `
-            <div class="month-tab ${m === currentMonth ? 'active' : ''}" onclick="switchMonth('${m}')">
-                ${m.split('-')[1]}月
-            </div>
-        `).join('');
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+
+        // 空白填充
+        for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
+
+        // 日期
+        for (let d = 1; d <= lastDate; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const hasRec = records.some(r => r.date === dateStr);
+            const isSelected = selectedDate === dateStr;
+            
+            grid.innerHTML += `
+                <div class="cal-day ${isSelected ? 'cal-selected' : ''} ${hasRec ? 'has-record' : ''}" 
+                     onclick="selectDate('${dateStr}')">
+                    ${d}
+                </div>
+            `;
+        }
+        document.getElementById('selectedDateText').innerText = selectedDate.replace(/-/g, '/');
     }
 
-    function switchMonth(m) {
-        currentMonth = m;
+    function selectDate(d) {
+        selectedDate = d;
         render();
     }
 
     function render() {
-        renderTabs();
+        renderCalendar();
         const list = document.getElementById('recordList');
         const monthTotalDisp = document.getElementById('monthTotal');
         const header = document.getElementById('header');
         list.innerHTML = '';
         
-        const filtered = records.filter(r => getMonthKey(r.date) === currentMonth);
+        const currentMonthKey = selectedDate.substring(0, 7);
+        document.getElementById('dispMonth').innerText = currentMonthKey.replace('-', ' 年 ') + ' 月';
+
+        const filtered = records.filter(r => r.date.substring(0, 7) === currentMonthKey);
         let monthTotal = filtered.reduce((sum, r) => sum + parseFloat(r.amount), 0);
         
         monthTotalDisp.innerText = (monthTotal >= 0 ? '+' : '') + monthTotal.toLocaleString();
-        
-        // 1. 動態更換 Header 背景顏色
-        header.className = "header-card"; 
-        if (monthTotal > 0) {
-            header.classList.add("positive"); // 合計 > 0 綠色
-        } else if (monthTotal < 0) {
-            header.classList.add("negative"); // 合計 < 0 紅色
-        } else {
-            header.classList.add("neutral");  // 合計 = 0 藍色
-        }
+        header.className = "header-card " + (monthTotal > 0 ? 'positive' : (monthTotal < 0 ? 'negative' : 'neutral'));
 
-        filtered.forEach((r) => {
+        filtered.forEach((r, idx) => {
             const originalIndex = records.indexOf(r);
-            // 2. 顯示完整日期：年/月/日
-            const fullDate = r.date.replace(/-/g, '/');
             list.innerHTML += `
                 <tr>
                     <td>
-                        <span style="font-weight:600; font-size:13px;">${fullDate}</span><br>
-                        <span style="font-size:14px;">${r.type || ''}</span><br>
+                        <span style="font-weight:600;">${r.date.replace(/-/g, '/')}</span><br>
+                        <span>${r.type || ''} @ ${r.location || '未填'}</span><br>
                         <small style="color:#8E8E93">${r.note || ''}</small>
                     </td>
-                    <td style="font-size:12px; color:#48484A;">${r.method || ''}</td>
+                    <td style="font-size:12px;">${r.method || ''}</td>
                     <td>
                         <span class="${r.amount >= 0 ? 'win' : 'lose'}">${r.amount >= 0 ? '+' + r.amount : r.amount}</span><br>
                         <a href="#" class="del-btn" onclick="deleteRec(${originalIndex})">刪除</a>
@@ -193,28 +197,22 @@
     }
 
     function addRecord() {
-        const date = document.getElementById('date').value;
         const type = document.getElementById('type').value;
-        // 3. 組合結算方式字串
         const methodBase = document.getElementById('methodSelect').value;
         const methodExtra = document.getElementById('methodDetail').value;
-        const methodFull = methodExtra ? `${methodBase} (${methodExtra})` : methodBase;
-        
+        const methodFull = methodExtra ? `${methodBase}(${methodExtra})` : methodBase;
         const amount = document.getElementById('amount').value;
+        const location = document.getElementById('location').value;
         const note = document.getElementById('note').value;
 
         if (!amount) return alert('請輸入金額');
 
-        records.unshift({ date, type, method: methodFull, amount: parseFloat(amount), note });
+        records.unshift({ date: selectedDate, type, method: methodFull, amount: parseFloat(amount), location, note });
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
         localStorage.setItem('pokerRecords', JSON.stringify(records));
         
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
-        document.getElementById('methodDetail').value = '';
-        
-        currentMonth = getMonthKey(date);
         render();
     }
 
