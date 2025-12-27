@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>我的戰績紀錄表</title>
+    <title>戰績紀錄表</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="戰績表">
@@ -12,32 +12,36 @@
 
     <style>
         :root { --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; }
-        body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 20px; padding-bottom: 100px; }
+        body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 15px; padding-bottom: 50px; }
         .container { max-width: 600px; margin: 0 auto; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
-        /* 頂部總和樣式 */
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; box-sizing: border-box; width: 100%; }
+        
         .total-card { background: var(--ios-blue); color: white; text-align: center; }
-        .total-val { font-size: 2rem; font-weight: bold; display: block; }
-        
-        /* 表單樣式 */
-        label { font-size: 0.8rem; color: #8E8E93; margin-left: 5px; }
-        input, select { 
-            width: 100%; padding: 12px; margin: 5px 0 15px 0; 
-            border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box;
-        }
-        .add-btn { 
-            width: 100%; background: var(--ios-blue); color: white; border: none; 
-            padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; 
-        }
+        .total-val { font-size: 2.2rem; font-weight: bold; display: block; }
+        .total-label { font-size: 0.9rem; opacity: 0.9; }
 
-        /* 紀錄列表 */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 10px 0 5px 5px; }
+        
+        input { 
+            width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; 
+            font-size: 16px; box-sizing: border-box; display: block; appearance: none;
+        }
+        .add-btn { width: 100%; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 10px; }
+
+        .month-tabs { display: flex; overflow-x: auto; gap: 10px; margin-bottom: 15px; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .month-tab { 
+            padding: 8px 16px; background: #E5E5EA; border-radius: 20px; font-size: 14px; 
+            white-space: nowrap; color: #3A3A3C; flex-shrink: 0; cursor: pointer;
+        }
+        .month-tab.active { background: var(--ios-blue); color: white; }
+
+        table { width: 100%; border-collapse: collapse; }
         th { text-align: left; font-size: 0.8rem; color: #8E8E93; border-bottom: 1px solid #E5E5EA; padding-bottom: 8px; }
-        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
+        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 15px; vertical-align: middle; }
         .win { color: var(--ios-green); font-weight: bold; }
         .lose { color: var(--ios-red); font-weight: bold; }
-        .delete-link { color: #8E8E93; font-size: 12px; text-decoration: none; margin-left: 5px; }
+        .del-btn { color: #FF3B30; font-size: 12px; border: 1px solid #FF3B30; padding: 2px 6px; border-radius: 4px; text-decoration: none; display: inline-block; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -45,71 +49,99 @@
 <div class="container">
     <div class="card total-card">
         <span class="total-val" id="grandTotal">0</span>
-        <span>目前總籌碼 (總和)</span>
+        <span class="total-label">總和</span>
     </div>
 
     <div class="card">
         <label>日期</label>
         <input type="date" id="date">
         
-        <label>底 / 台</label>
-        <select id="type">
-            <option value="100/20">100/20</option>
-            <option value="德州">德州</option>
-            <option value="其他">其他</option>
-        </select>
+        <label>遊戲類型</label>
+        <input type="text" id="type" placeholder="例如：100/20、德州">
         
         <label>輸贏金額</label>
-        <input type="number" id="amount" placeholder="例如: 715 或 -120" inputmode="numbers">
+        <input type="number" id="amount" inputmode="numbers">
         
-        <label>備註 (地點/費用)</label>
-        <input type="text" id="note" placeholder="例如: 興南街">
+        <label>備註</label>
+        <input type="text" id="note">
         
         <button class="add-btn" onclick="addRecord()">新增紀錄</button>
     </div>
 
+    <div class="month-tabs" id="monthTabs"></div>
+
     <div class="card">
-        <h2>紀錄明細</h2>
-        <table>
+        <table id="recordTable">
             <thead>
                 <tr>
-                    <th>日期</th>
-                    <th>類型</th>
-                    <th>輸贏</th>
-                    <th>操作</th>
+                    <th width="40%">日期/備註</th>
+                    <th width="30%">類型</th>
+                    <th width="30%">輸贏</th>
                 </tr>
             </thead>
             <tbody id="recordList"></tbody>
         </table>
-        <button onclick="exportData()" style="width:100%; background:none; color:var(--ios-blue); border:none; margin-top:20px; font-size:14px;">下載數據備份 (CSV)</button>
     </div>
 </div>
 
 <script>
-    // 預設日期為今天
     document.getElementById('date').valueAsDate = new Date();
-
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
+    let currentMonth = "";
+
+    function getMonthKey(dateStr) {
+        return dateStr.substring(0, 7);
+    }
+
+    function renderTabs() {
+        const tabsContainer = document.getElementById('monthTabs');
+        const months = [...new Set(records.map(r => getMonthKey(r.date)))].sort().reverse();
+        
+        if (months.length === 0) {
+            tabsContainer.innerHTML = '';
+            return;
+        }
+
+        if (!currentMonth || !months.includes(currentMonth)) {
+            currentMonth = months[0];
+        }
+
+        tabsContainer.innerHTML = months.map(m => `
+            <div class="month-tab ${m === currentMonth ? 'active' : ''}" onclick="switchMonth('${m}')">
+                ${m.replace('-', '年')}月
+            </div>
+        `).join('');
+    }
+
+    function switchMonth(m) {
+        currentMonth = m;
+        render();
+    }
 
     function render() {
+        renderTabs();
         const list = document.getElementById('recordList');
         const totalDisp = document.getElementById('grandTotal');
         list.innerHTML = '';
-        let total = 0;
+        
+        let grandTotal = records.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+        totalDisp.innerText = grandTotal.toLocaleString();
 
-        // 由新到舊排序
-        records.forEach((r, i) => {
-            total += parseFloat(r.amount);
+        const filtered = records.filter(r => getMonthKey(r.date) === currentMonth);
+
+        filtered.forEach((r) => {
+            const originalIndex = records.indexOf(r);
             list.innerHTML += `
                 <tr>
-                    <td>${r.date.split('-')[1]}/${r.date.split('-')[2]}<br><small style="color:#8E8E93">${r.note}</small></td>
-                    <td>${r.type}</td>
-                    <td class="${r.amount >= 0 ? 'win' : 'lose'}">${r.amount >= 0 ? '+' + r.amount : r.amount}</td>
-                    <td><a href="#" class="delete-link" onclick="deleteRec(${i})">刪除</a></td>
+                    <td>${r.date.substring(5).replace('-', '/')}<br><small style="color:#8E8E93">${r.note || ''}</small></td>
+                    <td>${r.type || ''}</td>
+                    <td>
+                        <span class="${r.amount >= 0 ? 'win' : 'lose'}">${r.amount >= 0 ? '+' + r.amount : r.amount}</span>
+                        <br><a href="#" class="del-btn" onclick="deleteRec(${originalIndex})">刪除</a>
+                    </td>
                 </tr>
             `;
         });
-        totalDisp.innerText = total;
     }
 
     function addRecord() {
@@ -118,36 +150,27 @@
         const amount = document.getElementById('amount').value;
         const note = document.getElementById('note').value;
 
-        if (!amount) return alert('請輸入輸贏金額');
+        if (!amount) return alert('請輸入金額');
 
         records.unshift({ date, type, amount: parseFloat(amount), note });
+        records.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
         localStorage.setItem('pokerRecords', JSON.stringify(records));
         
-        // 重置欄位
+        // 新增後保留遊戲類型，方便連記（若想連記不同類型則清空）
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
+        
+        currentMonth = getMonthKey(date);
         render();
     }
 
     function deleteRec(i) {
-        if(confirm('確定刪除這筆紀錄？')) {
+        if(confirm('確定刪除？')) {
             records.splice(i, 1);
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render();
         }
-    }
-
-    // 增加一個簡單的匯出功能，萬一你想把資料導回 Excel
-    function exportData() {
-        let csv = '日期,類型,輸贏,備註\n';
-        records.forEach(r => {
-            csv += `${r.date},${r.type},${r.amount},${r.note}\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "戰績備份.csv";
-        link.click();
     }
 
     render();
