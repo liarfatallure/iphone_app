@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>我的戰績紀錄表</title>
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="戰績表">
@@ -12,129 +11,146 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        :root {
-            --ios-blue: #007AFF;
-            --ios-green: #34C759;
-            --ios-red: #FF3B30;
-            --bg-color: #F2F2F7;
-        }
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background-color: var(--bg-color); 
-            margin: 0; padding: 20px;
-        }
-        .container { max-width: 500px; margin: 0 auto; }
-        .card { 
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; 
-        }
-        h2 { margin-top: 0; font-size: 1.2rem; color: #1c1c1e; }
+        :root { --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; }
+        body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 20px; padding-bottom: 100px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; margin-bottom: 10px; }
-        .stat-box { background: #f8f8f8; padding: 10px; border-radius: 8px; }
-        .stat-val { display: block; font-size: 1.4rem; font-weight: bold; }
-        .stat-label { font-size: 0.8rem; color: #8E8E93; }
-
-        select, input { 
-            width: 100%; padding: 12px; margin: 8px 0; 
-            border: 1px solid #C6C6C8; border-radius: 10px; 
-            font-size: 16px; -webkit-appearance: none;
+        /* 頂部總和樣式 */
+        .total-card { background: var(--ios-blue); color: white; text-align: center; }
+        .total-val { font-size: 2rem; font-weight: bold; display: block; }
+        
+        /* 表單樣式 */
+        label { font-size: 0.8rem; color: #8E8E93; margin-left: 5px; }
+        input, select { 
+            width: 100%; padding: 12px; margin: 5px 0 15px 0; 
+            border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box;
         }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; border: none; padding: 14px; border-radius: 10px; font-size: 17px; font-weight: 600; color: white; }
-        .win-btn { background: var(--ios-green); }
-        .lose-btn { background: var(--ios-red); }
-
-        .list-item { 
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom: 0.5px solid #C6C6C8; 
+        .add-btn { 
+            width: 100%; background: var(--ios-blue); color: white; border: none; 
+            padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; 
         }
-        .res-win { color: var(--ios-green); font-weight: bold; }
-        .res-lose { color: var(--ios-red); font-weight: bold; }
-        .del-btn { color: #8E8E93; border: none; background: none; font-size: 12px; }
+
+        /* 紀錄列表 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; font-size: 0.8rem; color: #8E8E93; border-bottom: 1px solid #E5E5EA; padding-bottom: 8px; }
+        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
+        .win { color: var(--ios-green); font-weight: bold; }
+        .lose { color: var(--ios-red); font-weight: bold; }
+        .delete-link { color: #8E8E93; font-size: 12px; text-decoration: none; margin-left: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
-        <h2>數據統計 📊</h2>
-        <div class="stats-grid">
-            <div class="stat-box"><span class="stat-val" id="totalWins">0</span><span class="stat-label">勝</span></div>
-            <div class="stat-box"><span class="stat-val" id="totalLoses">0</span><span class="stat-label">敗</span></div>
-            <div class="stat-box"><span class="stat-val" id="winRate">0%</span><span class="stat-label">勝率</span></div>
-        </div>
+    <div class="card total-card">
+        <span class="total-val" id="grandTotal">0</span>
+        <span>目前總籌碼 (總和)</span>
     </div>
 
     <div class="card">
-        <h2>新增紀錄</h2>
-        <input type="text" id="note" placeholder="備註 (例如：排位賽、對手名稱)">
-        <div class="btn-group">
-            <button class="win-btn" onclick="addRecord('勝')">勝利</button>
-            <button class="lose-btn" onclick="addRecord('敗')">戰敗</button>
-        </div>
+        <label>日期</label>
+        <input type="date" id="date">
+        
+        <label>底 / 台</label>
+        <select id="type">
+            <option value="100/20">100/20</option>
+            <option value="德州">德州</option>
+            <option value="其他">其他</option>
+        </select>
+        
+        <label>輸贏金額</label>
+        <input type="number" id="amount" placeholder="例如: 715 或 -120" inputmode="numbers">
+        
+        <label>備註 (地點/費用)</label>
+        <input type="text" id="note" placeholder="例如: 興南街">
+        
+        <button class="add-btn" onclick="addRecord()">新增紀錄</button>
     </div>
 
     <div class="card">
-        <h2>最近戰績</h2>
-        <div id="recordList"></div>
-        <button onclick="clearAll()" style="background:none; color:#8E8E93; font-size:13px; margin-top:15px; width:100%;">清空所有紀錄</button>
+        <h2>紀錄明細</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>類型</th>
+                    <th>輸贏</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="recordList"></tbody>
+        </table>
+        <button onclick="exportData()" style="width:100%; background:none; color:var(--ios-blue); border:none; margin-top:20px; font-size:14px;">下載數據備份 (CSV)</button>
     </div>
 </div>
 
 <script>
-    let records = JSON.parse(localStorage.getItem('gameRecords')) || [];
+    // 預設日期為今天
+    document.getElementById('date').valueAsDate = new Date();
 
-    function updateUI() {
+    let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
+
+    function render() {
         const list = document.getElementById('recordList');
+        const totalDisp = document.getElementById('grandTotal');
         list.innerHTML = '';
-        let wins = 0;
+        let total = 0;
 
+        // 由新到舊排序
         records.forEach((r, i) => {
-            if(r.result === '勝') wins++;
+            total += parseFloat(r.amount);
             list.innerHTML += `
-                <div class="list-item">
-                    <div>
-                        <span class="${r.result==='勝'?'res-win':'res-lose'}">${r.result}</span>
-                        <small style="color:#8E8E93; margin-left:10px;">${r.note || '無備註'}</small>
-                    </div>
-                    <button class="del-btn" onclick="deleteRecord(${i})">刪除</button>
-                </div>
+                <tr>
+                    <td>${r.date.split('-')[1]}/${r.date.split('-')[2]}<br><small style="color:#8E8E93">${r.note}</small></td>
+                    <td>${r.type}</td>
+                    <td class="${r.amount >= 0 ? 'win' : 'lose'}">${r.amount >= 0 ? '+' + r.amount : r.amount}</td>
+                    <td><a href="#" class="delete-link" onclick="deleteRec(${i})">刪除</a></td>
+                </tr>
             `;
         });
-
-        const total = records.length;
-        const loses = total - wins;
-        const rate = total === 0 ? 0 : Math.round((wins / total) * 100);
-
-        document.getElementById('totalWins').innerText = wins;
-        document.getElementById('totalLoses').innerText = loses;
-        document.getElementById('winRate').innerText = rate + '%';
+        totalDisp.innerText = total;
     }
 
-    function addRecord(res) {
+    function addRecord() {
+        const date = document.getElementById('date').value;
+        const type = document.getElementById('type').value;
+        const amount = document.getElementById('amount').value;
         const note = document.getElementById('note').value;
-        records.unshift({ result: res, note: note, time: new Date().getTime() });
-        localStorage.setItem('gameRecords', JSON.stringify(records));
+
+        if (!amount) return alert('請輸入輸贏金額');
+
+        records.unshift({ date, type, amount: parseFloat(amount), note });
+        localStorage.setItem('pokerRecords', JSON.stringify(records));
+        
+        // 重置欄位
+        document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
-        updateUI();
+        render();
     }
 
-    function deleteRecord(i) {
-        records.splice(i, 1);
-        localStorage.setItem('gameRecords', JSON.stringify(records));
-        updateUI();
-    }
-
-    function clearAll() {
-        if(confirm('確定要清除所有戰績嗎？')) {
-            records = [];
-            localStorage.removeItem('gameRecords');
-            updateUI();
+    function deleteRec(i) {
+        if(confirm('確定刪除這筆紀錄？')) {
+            records.splice(i, 1);
+            localStorage.setItem('pokerRecords', JSON.stringify(records));
+            render();
         }
     }
 
-    updateUI();
+    // 增加一個簡單的匯出功能，萬一你想把資料導回 Excel
+    function exportData() {
+        let csv = '日期,類型,輸贏,備註\n';
+        records.forEach(r => {
+            csv += `${r.date},${r.type},${r.amount},${r.note}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "戰績備份.csv";
+        link.click();
+    }
+
+    render();
 </script>
 
 </body>
