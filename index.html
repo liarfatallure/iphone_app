@@ -2,28 +2,140 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的第一個 PWA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的戰績紀錄表</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="我的App">
-    
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="戰績表">
     <link rel="apple-touch-icon" href="icon.png">
-    
     <link rel="manifest" href="manifest.json">
 
     <style>
-        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f0f2f5; }
-        .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        button { background: #007AFF; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+        :root {
+            --ios-blue: #007AFF;
+            --ios-green: #34C759;
+            --ios-red: #FF3B30;
+            --bg-color: #F2F2F7;
+        }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; padding: 20px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; 
+        }
+        h2 { margin-top: 0; font-size: 1.2rem; color: #1c1c1e; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; margin-bottom: 10px; }
+        .stat-box { background: #f8f8f8; padding: 10px; border-radius: 8px; }
+        .stat-val { display: block; font-size: 1.4rem; font-weight: bold; }
+        .stat-label { font-size: 0.8rem; color: #8E8E93; }
+
+        select, input { 
+            width: 100%; padding: 12px; margin: 8px 0; 
+            border: 1px solid #C6C6C8; border-radius: 10px; 
+            font-size: 16px; -webkit-appearance: none;
+        }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; border: none; padding: 14px; border-radius: 10px; font-size: 17px; font-weight: 600; color: white; }
+        .win-btn { background: var(--ios-green); }
+        .lose-btn { background: var(--ios-red); }
+
+        .list-item { 
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 0.5px solid #C6C6C8; 
+        }
+        .res-win { color: var(--ios-green); font-weight: bold; }
+        .res-lose { color: var(--ios-red); font-weight: bold; }
+        .del-btn { color: #8E8E93; border: none; background: none; font-size: 12px; }
     </style>
 </head>
 <body>
+
+<div class="container">
     <div class="card">
-        <h1>你好，iPhone！</h1>
-        <p>這是一個 PWA 範例</p>
-        <button onclick="alert('點擊成功！')">按下我</button>
+        <h2>數據統計 📊</h2>
+        <div class="stats-grid">
+            <div class="stat-box"><span class="stat-val" id="totalWins">0</span><span class="stat-label">勝</span></div>
+            <div class="stat-box"><span class="stat-val" id="totalLoses">0</span><span class="stat-label">敗</span></div>
+            <div class="stat-box"><span class="stat-val" id="winRate">0%</span><span class="stat-label">勝率</span></div>
+        </div>
     </div>
+
+    <div class="card">
+        <h2>新增紀錄</h2>
+        <input type="text" id="note" placeholder="備註 (例如：排位賽、對手名稱)">
+        <div class="btn-group">
+            <button class="win-btn" onclick="addRecord('勝')">勝利</button>
+            <button class="lose-btn" onclick="addRecord('敗')">戰敗</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>最近戰績</h2>
+        <div id="recordList"></div>
+        <button onclick="clearAll()" style="background:none; color:#8E8E93; font-size:13px; margin-top:15px; width:100%;">清空所有紀錄</button>
+    </div>
+</div>
+
+<script>
+    let records = JSON.parse(localStorage.getItem('gameRecords')) || [];
+
+    function updateUI() {
+        const list = document.getElementById('recordList');
+        list.innerHTML = '';
+        let wins = 0;
+
+        records.forEach((r, i) => {
+            if(r.result === '勝') wins++;
+            list.innerHTML += `
+                <div class="list-item">
+                    <div>
+                        <span class="${r.result==='勝'?'res-win':'res-lose'}">${r.result}</span>
+                        <small style="color:#8E8E93; margin-left:10px;">${r.note || '無備註'}</small>
+                    </div>
+                    <button class="del-btn" onclick="deleteRecord(${i})">刪除</button>
+                </div>
+            `;
+        });
+
+        const total = records.length;
+        const loses = total - wins;
+        const rate = total === 0 ? 0 : Math.round((wins / total) * 100);
+
+        document.getElementById('totalWins').innerText = wins;
+        document.getElementById('totalLoses').innerText = loses;
+        document.getElementById('winRate').innerText = rate + '%';
+    }
+
+    function addRecord(res) {
+        const note = document.getElementById('note').value;
+        records.unshift({ result: res, note: note, time: new Date().getTime() });
+        localStorage.setItem('gameRecords', JSON.stringify(records));
+        document.getElementById('note').value = '';
+        updateUI();
+    }
+
+    function deleteRecord(i) {
+        records.splice(i, 1);
+        localStorage.setItem('gameRecords', JSON.stringify(records));
+        updateUI();
+    }
+
+    function clearAll() {
+        if(confirm('確定要清除所有戰績嗎？')) {
+            records = [];
+            localStorage.removeItem('gameRecords');
+            updateUI();
+        }
+    }
+
+    updateUI();
+</script>
+
 </body>
 </html>

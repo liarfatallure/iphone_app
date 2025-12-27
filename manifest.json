@@ -1,6 +1,6 @@
 {
-  "name": "我的網頁 App",
-  "short_name": "我的App",
+  "name": "我的戰績紀錄表",
+  "short_name": "戰績表",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
