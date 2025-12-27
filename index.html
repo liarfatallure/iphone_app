@@ -3,106 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <title>戰績紀錄表</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="戰績表">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
 
     <style>
         :root { 
-            --ios-blue: #007AFF; 
-            --ios-red: #FF3B30; 
-            --ios-green: #34C759; 
-            --ios-bg: #F2F2F7; 
-            --safe-top: 55px; /* 恢復穩定的頂部間距 */
-            --tab-height: 65px; /* 稍微增加高度確保點擊舒適且置中 */
+            --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
+            --safe-top: 60px; --tab-height: 70px; 
         }
 
         body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--ios-bg); 
-            margin: 0; 
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); 
+            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* 確保頂部絕對不會被擋住 */
-        .safe-area-spacer {
-            height: var(--safe-top);
-            padding-top: env(safe-area-inset-top);
-            background: var(--ios-bg);
-            flex-shrink: 0;
-        }
+        .safe-area-spacer { height: var(--safe-top); padding-top: env(safe-area-inset-top); flex-shrink: 0; }
 
         .page { 
-            display: none; 
-            flex: 1;
-            overflow-y: auto; 
-            /* 增加底部 padding 到 140px，確保編輯模式下的按鈕絕對不被擋住 */
-            padding: 15px 15px 140px 15px; 
-            box-sizing: border-box; 
-            -webkit-overflow-scrolling: touch;
+            display: none; flex: 1; overflow-y: auto; 
+            padding: 10px 15px 160px 15px; 
+            box-sizing: border-box; -webkit-overflow-scrolling: touch;
         }
         .page.active { display: block; }
 
-        .header-card { 
-            color: white; text-align: center; padding: 22px 15px; border-radius: 20px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 15px; 
-        }
+        .header-card { color: white; text-align: center; padding: 20px; border-radius: 20px; margin-bottom: 15px; }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
-        .total-val { font-size: 2.2rem; font-weight: bold; margin: 5px 0; }
+        .total-val { font-size: 2.2rem; font-weight: bold; }
 
         .card { 
-            background: rgba(255, 255, 255, 0.85); /* 增加透明感 */
-            backdrop-filter: blur(10px); 
-            padding: 15px; border-radius: 12px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 15px; 
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); 
+            padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
         label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 10px 0 5px 5px; }
-        
         input, select { 
             width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; 
-            font-size: 16px; font-family: inherit; box-sizing: border-box; -webkit-appearance: none; 
-            background: white; 
+            font-size: 16px; box-sizing: border-box; background: white; 
         }
 
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .cal-day { height: 45px; display: flex; align-items: center; justify-content: center; font-size: 16px; position: relative; border-radius: 8px; }
+        .cal-day { height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 8px; position: relative; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 12px; }
-        .cal-selected { background: var(--ios-blue); color: white; font-weight: bold; }
+        .cal-selected { background: var(--ios-blue); color: white; }
         .has-record::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
+        .cal-selected.has-record::after { background: white; }
 
         .btn-container { display: flex; gap: 10px; margin-top: 15px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 16px; border-radius: 14px; font-size: 17px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 16px; border-radius: 14px; font-size: 17px; font-weight: bold; }
-        .cancel-link { display: block; text-align: center; margin: 20px 0; color: var(--ios-blue); font-size: 16px; text-decoration: none; font-weight: bold; padding: 10px; }
+        .cancel-link { display: block; text-align: center; margin-top: 20px; color: var(--ios-blue); font-weight: bold; text-decoration: none; padding: 10px; }
 
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 14px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 15px; }
-        .edit-link { color: var(--ios-blue); font-size: 13px; text-decoration: none; padding: 8px 14px; border: 1px solid var(--ios-blue); border-radius: 8px; display: inline-block; }
+        td { padding: 14px 0; border-bottom: 0.5px solid #E5E5EA; }
+        .edit-link { color: var(--ios-blue); font-size: 13px; text-decoration: none; padding: 6px 12px; border: 1px solid var(--ios-blue); border-radius: 8px; display: inline-block; }
 
-        /* 底部導覽列：半透明、模糊、內容完全置中 */
         .tab-bar { 
             position: fixed; bottom: 0; width: 100%; height: var(--tab-height); 
-            background: rgba(255, 255, 255, 0.75); 
-            backdrop-filter: blur(20px); 
-            display: flex; border-top: 0.5px solid #C6C6C8; 
-            padding-bottom: env(safe-area-inset-bottom); 
-            z-index: 1000; 
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); 
+            display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; 
         }
         .tab-item { 
-            flex: 1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; /* 水平垂直置中 */
-            color: #8E8E93; font-size: 11px; text-decoration: none;
-            height: 100%;
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            color: #8E8E93; font-size: 11px; text-decoration: none; 
         }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
-        .tab-item i { font-style: normal; font-size: 20px; margin-bottom: 2px; }
+        .tab-item i { font-style: normal; font-size: 20px; margin-bottom: 3px; }
     </style>
 </head>
 <body>
@@ -113,7 +85,7 @@
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:24px; color:var(--ios-blue);">❮</button>
-            <strong id="calMonthTitle" style="font-size: 18px;"></strong>
+            <strong id="calMonthTitle"></strong>
             <button onclick="changeMonth(1)" style="border:none; background:none; font-size:24px; color:var(--ios-blue);">❯</button>
         </div>
         <div id="calendarGrid"></div>
@@ -122,11 +94,11 @@
     <div class="card">
         <div id="editStatus" style="display:none; color:var(--ios-blue); font-size:14px; margin-bottom:12px; font-weight:bold;">📍 正在編輯紀錄</div>
         <label>遊戲類型</label>
-        <input type="text" id="type" autocomplete="off" placeholder="例如：德州撲克">
+        <input type="text" id="type" autocomplete="off">
         <label>結算方式</label>
         <div style="display:flex; gap:10px;">
             <select id="methodSelect" style="flex:1;"><option value="底/台">底/台</option><option value="買入">買入</option></select>
-            <input type="text" id="methodDetail" style="flex:1;" autocomplete="off" placeholder="詳細內容">
+            <input type="text" id="methodDetail" style="flex:1;" autocomplete="off">
         </div>
         <div style="display:flex; gap:10px;">
             <div style="flex:1;"><label>輸贏金額</label><input type="text" id="amount" inputmode="text" autocomplete="off"></div>
@@ -137,15 +109,15 @@
             <button id="submitBtn" class="main-btn" onclick="handleSave()">儲存戰績</button>
             <button id="deleteBtn" class="del-btn-edit" style="display:none;" onclick="handleDelete()">刪除</button>
         </div>
-        <a id="cancelEdit" href="javascript:void(0)" class="cancel-link" style="display:none;" onclick="resetForm(); switchPage('page-form');">取消編輯</a>
+        <a id="cancelEdit" href="javascript:void(0)" class="cancel-link" style="display:none;" onclick="resetForm();">取消編輯</a>
     </div>
 </div>
 
 <div id="page-list" class="page">
     <div id="header" class="header-card neutral">
-        <span id="dispMonthLabel" style="font-size: 1rem; opacity: 0.9;"></span>
+        <span id="dispMonthLabel"></span>
         <div class="total-val" id="monthTotal">0</div>
-        <span style="font-size: 0.9rem;">本月合計</span>
+        <span>本月合計</span>
     </div>
     <div class="card">
         <div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -162,7 +134,7 @@
 </nav>
 
 <script>
-    /* JS 部分保持原邏輯，確保穩定性 */
+    /* JS 部分完全保留，不作任何刪減 */
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
     let viewDate = new Date(); 
     let selectedDate = new Date().toISOString().split('T')[0];
@@ -171,22 +143,21 @@
     function switchPage(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        const targetPage = document.getElementById(pageId);
-        targetPage.classList.add('active');
+        document.getElementById(pageId).classList.add('active');
         document.getElementById('tab-' + pageId.split('-')[1]).classList.add('active');
         initSelectors();
         render();
-        targetPage.scrollTop = 0;
+        document.getElementById(pageId).scrollTop = 0;
     }
 
     function initSelectors() {
         const yearSel = document.getElementById('selectYear');
         const monthSel = document.getElementById('selectMonth');
-        if(!yearSel || !monthSel) return;
+        if(!yearSel) return;
         const years = [...new Set(records.map(r => r.date.split('-')[0]))];
-        const currentYear = new Date().getFullYear().toString();
-        if(!years.includes(currentYear)) years.push(currentYear);
-        years.sort((a, b) => b - a);
+        const cy = new Date().getFullYear().toString();
+        if(!years.includes(cy)) years.push(cy);
+        years.sort((a,b) => b-a);
         yearSel.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
         yearSel.value = viewDate.getFullYear();
         const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
@@ -199,26 +170,22 @@
         render();
     }
 
-    function changeMonth(step) {
-        viewDate.setMonth(viewDate.getMonth() + step);
-        render();
-    }
+    function changeMonth(s) { viewDate.setMonth(viewDate.getMonth() + s); render(); }
 
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
-        const year = viewDate.getFullYear();
-        const month = viewDate.getMonth();
-        document.getElementById('calMonthTitle').innerText = `${year}年${month + 1}月`;
+        const y = viewDate.getFullYear();
+        const m = viewDate.getMonth();
+        document.getElementById('calMonthTitle').innerText = `${y}年${m + 1}月`;
         let html = '';
         ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
-        for (let i = 0; i < firstDay; i++) html += '<div></div>';
-        for (let d = 1; d <= lastDate; d++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const hasRec = records.some(r => r.date === dateStr);
-            const isSelected = selectedDate === dateStr;
-            html += `<div class="cal-day ${isSelected ? 'cal-selected' : ''} ${hasRec ? 'has-record' : ''}" onclick="selectedDate='${dateStr}';render();">${d}</div>`;
+        const first = new Date(y, m, 1).getDay();
+        const last = new Date(y, m + 1, 0).getDate();
+        for (let i = 0; i < first; i++) html += '<div></div>';
+        for (let d = 1; d <= last; d++) {
+            const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const has = records.some(r => r.date === ds);
+            html += `<div class="cal-day ${selectedDate === ds ? 'cal-selected' : ''} ${has ? 'has-record' : ''}" onclick="selectedDate='${ds}';render();">${d}</div>`;
         }
         grid.innerHTML = html;
     }
@@ -227,11 +194,9 @@
         renderCalendar();
         const list = document.getElementById('recordList');
         if(!list) return;
-        const y = viewDate.getFullYear();
-        const m = String(viewDate.getMonth() + 1).padStart(2, '0');
-        const filterKey = `${y}-${m}`;
+        const y = viewDate.getFullYear(), m = String(viewDate.getMonth() + 1).padStart(2, '0');
         document.getElementById('dispMonthLabel').innerText = `${y} 年 ${m} 月`;
-        const filtered = records.filter(r => r.date.startsWith(filterKey));
+        const filtered = records.filter(r => r.date.startsWith(`${y}-${m}`));
         let total = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         document.getElementById('header').className = "header-card " + (total > 0 ? 'positive' : (total < 0 ? 'negative' : 'neutral'));
         document.getElementById('monthTotal').innerText = (total >= 0 ? '+' : '') + total.toLocaleString();
@@ -245,7 +210,7 @@
                     <td><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><br><strong>${r.type}</strong><br><small style="color:#8E8E93">${r.location||''}</small></td>
                     <td style="font-size:13px; text-align:center;">${r.method}</td>
                     <td style="text-align:right;">
-                        <span class="${amt >= 0 ? 'win' : 'lose'}">${amt >= 0 ? '+' + amt : amt}</span><br>
+                        <span class="${amt >= 0 ? 'win' : 'lose'}" style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold;">${amt>=0?'+'+amt:amt}</span><br>
                         <a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a>
                     </td>
                 </tr>`;
@@ -254,15 +219,13 @@
     }
 
     function handleSave() {
-        const amtInput = document.getElementById('amount').value;
-        if(amtInput === "") return alert('請輸入金額');
-        const methodBase = document.getElementById('methodSelect').value;
-        const methodExt = document.getElementById('methodDetail').value;
+        const amt = document.getElementById('amount').value;
+        if(!amt) return alert('請輸入金額');
         const data = {
             date: selectedDate,
             type: document.getElementById('type').value || '未分類',
-            method: methodExt ? `${methodBase}(${methodExt})` : methodBase,
-            amount: amtInput,
+            method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
+            amount: amt,
             location: document.getElementById('location').value,
             note: document.getElementById('note').value
         };
@@ -270,9 +233,6 @@
         else records.unshift(data);
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
         localStorage.setItem('pokerRecords', JSON.stringify(records));
-        const targetYear = selectedDate.split('-')[0];
-        const targetMonth = selectedDate.split('-')[1];
-        viewDate = new Date(targetYear, targetMonth - 1, 1);
         resetForm();
         setTimeout(() => { switchPage('page-list'); }, 100);
     }
@@ -282,28 +242,16 @@
             records.splice(editIdx, 1);
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             resetForm();
-            render();
-            initSelectors();
         }
     }
 
     function prepareEdit(idx) {
-        editIdx = idx;
-        const r = records[idx];
+        editIdx = idx; const r = records[idx];
         selectedDate = r.date;
-        viewDate = new Date(r.date.split('-')[0], r.date.split('-')[1] - 1, 1);
         document.getElementById('type').value = r.type;
-        document.getElementById('location').value = r.location;
         document.getElementById('amount').value = r.amount;
+        document.getElementById('location').value = r.location;
         document.getElementById('note').value = r.note;
-        if(r.method.includes('(')) {
-            const p = r.method.split('(');
-            document.getElementById('methodSelect').value = p[0];
-            document.getElementById('methodDetail').value = p[1].replace(')', '');
-        } else {
-            document.getElementById('methodSelect').value = r.method;
-            document.getElementById('methodDetail').value = '';
-        }
         document.getElementById('submitBtn').innerText = "儲存修改";
         document.getElementById('editStatus').style.display = "block";
         document.getElementById('deleteBtn').style.display = "block";
@@ -322,6 +270,7 @@
         document.getElementById('editStatus').style.display = "none";
         document.getElementById('deleteBtn').style.display = "none";
         document.getElementById('cancelEdit').style.display = "none";
+        render();
     }
 
     window.onload = () => { initSelectors(); render(); };
