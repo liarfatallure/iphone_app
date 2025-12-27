@@ -17,7 +17,6 @@
             --ios-red: #FF3B30; 
             --ios-green: #34C759; 
             --ios-bg: #F2F2F7; 
-            /* 強制墊高距離，避開動態島與時間列 */
             --safe-top: 50px; 
         }
 
@@ -27,12 +26,11 @@
             margin: 0; 
             padding: 0;
             height: 100vh;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
-        /* 頂部安全墊片 */
         .safe-area-spacer {
             height: var(--safe-top);
             padding-top: env(safe-area-inset-top);
@@ -40,12 +38,14 @@
             flex-shrink: 0;
         }
 
+        /* 修正遮擋：增加 padding-bottom 確保內容高於底部導覽列 */
         .page { 
             display: none; 
             flex: 1;
             overflow-y: auto; 
-            padding: 0 15px 80px 15px; /* 底部留空間給 tab-bar */
+            padding: 15px 15px 100px 15px; 
             box-sizing: border-box; 
+            -webkit-overflow-scrolling: touch;
         }
         .page.active { display: block; }
 
@@ -73,16 +73,16 @@
         .btn-container { display: flex; gap: 10px; margin-top: 15px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 17px; font-weight: bold; font-family: inherit; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 16px; border-radius: 12px; font-size: 17px; font-weight: bold; font-family: inherit; }
-        .cancel-link { display: block; text-align: center; margin-top: 12px; color: var(--ios-blue); font-size: 15px; text-decoration: none; padding: 10px; font-weight: bold; }
+        .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 16px; text-decoration: none; padding: 10px; font-weight: bold; }
 
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; vertical-align: top; }
-        .edit-link { color: var(--ios-blue); font-size: 12px; text-decoration: none; padding: 5px 10px; border: 1px solid var(--ios-blue); border-radius: 6px; display: inline-block; }
+        .edit-link { color: var(--ios-blue); font-size: 12px; text-decoration: none; padding: 6px 12px; border: 1px solid var(--ios-blue); border-radius: 6px; display: inline-block; margin-top: 5px; }
         .win { color: var(--ios-green); font-weight: bold; }
         .lose { color: var(--ios-red); font-weight: bold; }
 
-        .tab-bar { position: fixed; bottom: 0; width: 100%; height: 65px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
-        .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 11px; text-decoration: none; }
+        .tab-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 999; }
+        .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 12px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
     </style>
 </head>
@@ -106,10 +106,7 @@
         <input type="text" id="type" autocomplete="off">
         <label>結算方式</label>
         <div style="display:flex; gap:10px;">
-            <select id="methodSelect" style="flex:1;">
-                <option value="底/台">底/台</option>
-                <option value="買入">買入</option>
-            </select>
+            <select id="methodSelect" style="flex:1;"><option value="底/台">底/台</option><option value="買入">買入</option></select>
             <input type="text" id="methodDetail" style="flex:1;" autocomplete="off">
         </div>
         <div style="display:flex; gap:10px;">
@@ -217,7 +214,7 @@
         document.getElementById('header').className = "header-card " + (total > 0 ? 'positive' : (total < 0 ? 'negative' : 'neutral'));
         document.getElementById('monthTotal').innerText = (total >= 0 ? '+' : '') + total.toLocaleString();
         if(filtered.length === 0) {
-            list.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#8E8E93; padding:30px;">本月尚無紀錄</td></tr>';
+            list.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#8E8E93; padding:50px 0;">本月尚無紀錄</td></tr>';
         } else {
             list.innerHTML = filtered.map(r => {
                 const idx = records.indexOf(r);
@@ -252,9 +249,12 @@
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
         localStorage.setItem('pokerRecords', JSON.stringify(records));
         
+        // 關鍵修正：儲存後將瀏覽視角切換到紀錄的那個月份
+        viewDate = new Date(selectedDate.split('-')[0], selectedDate.split('-')[1] - 1, 1);
+        
         resetForm();
+        initSelectors(); 
         render(); 
-        initSelectors(); // 確保年份選單同步
         alert("儲存成功");
     }
 
@@ -272,7 +272,7 @@
         editIdx = idx;
         const r = records[idx];
         selectedDate = r.date;
-        viewDate = new Date(r.date);
+        viewDate = new Date(r.date.split('-')[0], r.date.split('-')[1] - 1, 1);
         document.getElementById('type').value = r.type;
         document.getElementById('location').value = r.location;
         document.getElementById('amount').value = r.amount;
