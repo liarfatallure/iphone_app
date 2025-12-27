@@ -15,7 +15,6 @@
         body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 0; padding-bottom: 50px; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
         
-        /* Header 顏色樣式 */
         .header-card { color: white; text-align: center; padding: 25px 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.3s; }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
@@ -26,26 +25,31 @@
         label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 10px 0 5px 5px; }
         input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; font-size: 16px; box-sizing: border-box; display: block; -webkit-appearance: none; background: white; }
 
-        /* 1 & 2. 欄位等寬排列 */
         .input-row { display: flex; gap: 10px; margin-bottom: 5px; }
         .input-row > * { flex: 1; width: 50%; }
 
         .add-btn { width: 100%; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 15px; }
 
-        /* 3. 自定義月曆樣式 */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .cal-day { padding: 10px 0; border-radius: 8px; font-size: 14px; position: relative; }
-        .cal-header { font-weight: bold; color: #8E8E93; font-size: 12px; padding-bottom: 10px; }
-        .cal-today { background: #E5E5EA; }
-        .cal-selected { border: 2px solid var(--ios-blue); }
-        .has-record::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .cal-day { 
+            height: 45px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 8px; font-size: 14px; position: relative; 
+        }
+        .cal-header { font-weight: bold; color: #8E8E93; font-size: 12px; padding-bottom: 10px; height: auto; }
+        .cal-selected { background: #E5E5EA; border: 1.5px solid var(--ios-blue); }
+        
+        .has-record::after { 
+            content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); 
+            width: 4px; height: 4px; background: var(--ios-blue); border-radius: 50%; 
+        }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; font-size: 0.8rem; color: #8E8E93; border-bottom: 1px solid #E5E5EA; padding-bottom: 8px; }
         td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
         .win { color: var(--ios-green); font-weight: bold; }
         .lose { color: var(--ios-red); font-weight: bold; }
-        .del-btn { color: #8E8E93; font-size: 11px; border: 0.5px solid #C6C6C8; padding: 2px 5px; border-radius: 4px; text-decoration: none; }
+        .del-btn { color: #8E8E93; font-size: 11px; text-decoration: none; border: 0.5px solid #C6C6C8; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -59,9 +63,9 @@
 <div class="container">
     <div class="card">
         <div id="calendarHeader" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:20px;">❮</button>
-            <strong id="calMonthTitle">2025年12月</strong>
-            <button onclick="changeMonth(1)" style="border:none; background:none; font-size:20px;">❯</button>
+            <button onclick="changeMonth(-1)" style="border:none; background:none; font-size:20px; padding: 10px;">❮</button>
+            <strong id="calMonthTitle">----年--月</strong>
+            <button onclick="changeMonth(1)" style="border:none; background:none; font-size:20px; padding: 10px;">❯</button>
         </div>
         <div class="calendar-grid" id="calendarGrid"></div>
     </div>
@@ -70,7 +74,7 @@
         <label>遊戲類型</label>
         <input type="text" id="type">
 
-        <label>結算方式 / 補充</label>
+        <label>結算方式</label>
         <div class="input-row">
             <select id="methodSelect">
                 <option value="底/台">底/台</option>
@@ -93,14 +97,14 @@
         <label>備註</label>
         <input type="text" id="note">
         
-        <button class="add-btn" onclick="addRecord()">新增紀錄 (選定日期: <span id="selectedDateText"></span>)</button>
+        <button class="add-btn" onclick="addRecord()">新增紀錄 (<span id="selectedDateText"></span>)</button>
     </div>
 
     <div class="card">
         <table id="recordTable">
             <thead>
                 <tr>
-                    <th width="45%">日期/地點/備註</th>
+                    <th width="45%">日期/資訊/備註</th>
                     <th width="25%">方式</th>
                     <th width="30%">輸贏</th>
                 </tr>
@@ -112,11 +116,16 @@
 
 <script>
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
-    let viewDate = new Date(); // 目前月曆看的月份
-    let selectedDate = new Date().toISOString().split('T')[0]; // 目前點選要記錄的日期
+    let viewDate = new Date();
+    let selectedDate = new Date().toISOString().split('T')[0];
 
+    // 修改：切換月份時同時更新選取日期，並觸發渲染
     function changeMonth(step) {
         viewDate.setMonth(viewDate.getMonth() + step);
+        // 切換月份時，預設選取該月份的第一天
+        const y = viewDate.getFullYear();
+        const m = String(viewDate.getMonth() + 1).padStart(2, '0');
+        selectedDate = `${y}-${m}-01`; 
         render();
     }
 
@@ -129,18 +138,15 @@
         const month = viewDate.getMonth();
         title.innerText = `${year}年${month + 1}月`;
 
-        // 星期表頭
         ['日','一','二','三','四','五','六'].forEach(d => {
-            grid.innerHTML += `<div class="cal-header">${d}</div>`;
+            grid.innerHTML += `<div class="cal-day cal-header">${d}</div>`;
         });
 
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
 
-        // 空白填充
         for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
 
-        // 日期
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const hasRec = records.some(r => r.date === dateStr);
@@ -158,6 +164,8 @@
 
     function selectDate(d) {
         selectedDate = d;
+        // 點擊日期時，如果該日期不在目前瀏覽的月份（例如點到邊界日期），更新瀏覽日期
+        viewDate = new Date(d);
         render();
     }
 
@@ -168,22 +176,30 @@
         const header = document.getElementById('header');
         list.innerHTML = '';
         
-        const currentMonthKey = selectedDate.substring(0, 7);
-        document.getElementById('dispMonth').innerText = currentMonthKey.replace('-', ' 年 ') + ' 月';
+        // 抓取目前月曆正在看的「年-月」
+        const currentYear = viewDate.getFullYear();
+        const currentMonth = String(viewDate.getMonth() + 1).padStart(2, '0');
+        const currentMonthKey = `${currentYear}-${currentMonth}`;
+        
+        document.getElementById('dispMonth').innerText = `${currentYear} 年 ${currentMonth} 月`;
 
+        // 過濾當前顯示月份的資料
         const filtered = records.filter(r => r.date.substring(0, 7) === currentMonthKey);
         let monthTotal = filtered.reduce((sum, r) => sum + parseFloat(r.amount), 0);
         
         monthTotalDisp.innerText = (monthTotal >= 0 ? '+' : '') + monthTotal.toLocaleString();
         header.className = "header-card " + (monthTotal > 0 ? 'positive' : (monthTotal < 0 ? 'negative' : 'neutral'));
 
-        filtered.forEach((r, idx) => {
+        filtered.forEach((r) => {
             const originalIndex = records.indexOf(r);
+            let infoText = r.type || '未填類型';
+            if (r.location) infoText += ` / ${r.location}`;
+
             list.innerHTML += `
                 <tr>
                     <td>
                         <span style="font-weight:600;">${r.date.replace(/-/g, '/')}</span><br>
-                        <span>${r.type || ''} @ ${r.location || '未填'}</span><br>
+                        <span>${infoText}</span><br>
                         <small style="color:#8E8E93">${r.note || ''}</small>
                     </td>
                     <td style="font-size:12px;">${r.method || ''}</td>
