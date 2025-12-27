@@ -11,16 +11,27 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        :root { --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; }
+        :root { 
+            --ios-blue: #007AFF; 
+            --ios-red: #FF3B30; 
+            --ios-green: #34C759; 
+            --light-green: #E2F9E1; 
+            --light-red: #FFE5E5;
+        }
         body { font-family: -apple-system, sans-serif; background: #F2F2F7; margin: 0; padding: 0; padding-bottom: 50px; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
         
-        /* 1. 月份顯示與該月總和放在最上方 */
+        /* 1. 動態背景的 Header */
         .header-card { 
-            background: var(--ios-blue); color: white; text-align: center; 
+            color: #1C1C1E; text-align: center; 
             padding: 25px 15px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+            transition: background-color 0.3s ease; /* 顏色轉換動畫 */
         }
+        .header-card.positive { background-color: var(--ios-green); color: white; }
+        .header-card.negative { background-color: var(--ios-red); color: white; }
+        .header-card.neutral { background-color: var(--ios-blue); color: white; }
+
         .current-month-label { font-size: 1.1rem; opacity: 0.9; display: block; margin-bottom: 5px; }
         .total-val { font-size: 2.5rem; font-weight: bold; display: block; }
         .total-label { font-size: 0.9rem; opacity: 0.8; }
@@ -28,15 +39,18 @@
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; box-sizing: border-box; }
         label { font-size: 0.85rem; color: #8E8E93; display: block; margin: 12px 0 5px 5px; }
         
-        /* 2. & 4. 修正輸入框樣式 */
         input, select { 
             width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 10px; 
             font-size: 16px; box-sizing: border-box; display: block; appearance: none;
-            -webkit-appearance: none;
+            -webkit-appearance: none; background-color: white;
         }
-        /* 4. 移除數字輸入框的上下箭頭 */
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
+
+        /* 3. 結算方式組合樣式 */
+        .input-group { display: flex; gap: 8px; margin-top: 5px; }
+        .input-group select { width: 35%; }
+        .input-group input { width: 65%; }
 
         .add-btn { width: 100%; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 17px; font-weight: bold; margin-top: 15px; }
 
@@ -49,15 +63,15 @@
 
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; font-size: 0.8rem; color: #8E8E93; border-bottom: 1px solid #E5E5EA; padding-bottom: 8px; }
-        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 15px; vertical-align: middle; }
+        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; vertical-align: middle; }
         .win { color: var(--ios-green); font-weight: bold; }
         .lose { color: var(--ios-red); font-weight: bold; }
-        .del-btn { color: #FF3B30; font-size: 12px; text-decoration: none; border: 1px solid #FF3B30; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+        .del-btn { color: #8E8E93; font-size: 11px; text-decoration: none; border: 0.5px solid #C6C6C8; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="header-card">
+<div id="header" class="header-card neutral">
     <span class="current-month-label" id="dispMonth">----年--月</span>
     <span class="total-val" id="monthTotal">0</span>
     <span class="total-label">本月合計</span>
@@ -72,10 +86,13 @@
         <input type="text" id="type">
         
         <label>結算方式</label>
-        <select id="method">
-            <option value="底/台">A. 底/台</option>
-            <option value="買入">B. 買入</option>
-        </select>
+        <div class="input-group">
+            <select id="methodSelect">
+                <option value="底/台">底/台</option>
+                <option value="買入">買入</option>
+            </select>
+            <input type="text" id="methodDetail" placeholder="補充說明">
+        </div>
         
         <label>輸贏金額</label>
         <input type="number" id="amount" inputmode="decimal">
@@ -115,18 +132,8 @@
         const tabsContainer = document.getElementById('monthTabs');
         const months = [...new Set(records.map(r => getMonthKey(r.date)))].sort().reverse();
         
-        if (months.length === 0) {
-            tabsContainer.innerHTML = '';
-            // 如果沒資料，顯示當前月份
-            const todayKey = getMonthKey(new Date().toISOString());
-            if (!currentMonth) currentMonth = todayKey;
-            document.getElementById('dispMonth').innerText = todayKey.replace('-', ' 年 ') + ' 月';
-            return;
-        }
-
-        if (!currentMonth || !months.includes(currentMonth)) {
-            currentMonth = months[0];
-        }
+        const todayKey = getMonthKey(new Date().toISOString().split('T')[0]);
+        if (!currentMonth) currentMonth = (months.length > 0) ? months[0] : todayKey;
 
         document.getElementById('dispMonth').innerText = currentMonth.replace('-', ' 年 ') + ' 月';
 
@@ -146,24 +153,36 @@
         renderTabs();
         const list = document.getElementById('recordList');
         const monthTotalDisp = document.getElementById('monthTotal');
+        const header = document.getElementById('header');
         list.innerHTML = '';
         
-        // 4. 只計算「當前月份」的總和
         const filtered = records.filter(r => getMonthKey(r.date) === currentMonth);
         let monthTotal = filtered.reduce((sum, r) => sum + parseFloat(r.amount), 0);
         
         monthTotalDisp.innerText = (monthTotal >= 0 ? '+' : '') + monthTotal.toLocaleString();
-        monthTotalDisp.parentElement.style.backgroundColor = monthTotal >= 0 ? 'var(--ios-blue)' : '#5856D6';
+        
+        // 1. 動態更換 Header 背景顏色
+        header.className = "header-card"; 
+        if (monthTotal > 0) {
+            header.classList.add("positive"); // 合計 > 0 綠色
+        } else if (monthTotal < 0) {
+            header.classList.add("negative"); // 合計 < 0 紅色
+        } else {
+            header.classList.add("neutral");  // 合計 = 0 藍色
+        }
 
         filtered.forEach((r) => {
             const originalIndex = records.indexOf(r);
+            // 2. 顯示完整日期：年/月/日
+            const fullDate = r.date.replace(/-/g, '/');
             list.innerHTML += `
                 <tr>
                     <td>
-                        <span style="font-weight:500;">${r.date.substring(8)}日 (${r.type || '未填'})</span><br>
+                        <span style="font-weight:600; font-size:13px;">${fullDate}</span><br>
+                        <span style="font-size:14px;">${r.type || ''}</span><br>
                         <small style="color:#8E8E93">${r.note || ''}</small>
                     </td>
-                    <td style="font-size:13px; color:#48484A;">${r.method || ''}</td>
+                    <td style="font-size:12px; color:#48484A;">${r.method || ''}</td>
                     <td>
                         <span class="${r.amount >= 0 ? 'win' : 'lose'}">${r.amount >= 0 ? '+' + r.amount : r.amount}</span><br>
                         <a href="#" class="del-btn" onclick="deleteRec(${originalIndex})">刪除</a>
@@ -176,27 +195,31 @@
     function addRecord() {
         const date = document.getElementById('date').value;
         const type = document.getElementById('type').value;
-        const method = document.getElementById('method').value;
+        // 3. 組合結算方式字串
+        const methodBase = document.getElementById('methodSelect').value;
+        const methodExtra = document.getElementById('methodDetail').value;
+        const methodFull = methodExtra ? `${methodBase} (${methodExtra})` : methodBase;
+        
         const amount = document.getElementById('amount').value;
         const note = document.getElementById('note').value;
 
         if (!amount) return alert('請輸入金額');
 
-        records.unshift({ date, type, method, amount: parseFloat(amount), note });
+        records.unshift({ date, type, method: methodFull, amount: parseFloat(amount), note });
         records.sort((a, b) => new Date(b.date) - new Date(a.date));
         
         localStorage.setItem('pokerRecords', JSON.stringify(records));
         
-        // 清空金額與備註，保留類型與日期方便連記
         document.getElementById('amount').value = '';
         document.getElementById('note').value = '';
+        document.getElementById('methodDetail').value = '';
         
         currentMonth = getMonthKey(date);
         render();
     }
 
     function deleteRec(i) {
-        if(confirm('確定刪除這筆紀錄？')) {
+        if(confirm('確定刪除？')) {
             records.splice(i, 1);
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render();
