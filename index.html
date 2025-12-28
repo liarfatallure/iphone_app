@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>戰績紀錄表</title>
+    <title>戰績紀錄表 - 雲端版</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
-    <link rel="apple-touch-icon" href="icon.png">
-
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -20,26 +19,38 @@
         .safe-area-spacer { height: var(--safe-top); padding-top: env(safe-area-inset-top); flex-shrink: 0; }
         .page { display: none; flex: 1; overflow-y: auto; padding: 15px 12px 100px 12px; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
+        
+        /* 標題卡片 */
         .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
+
+        /* 卡片容器 */
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 12px; border-radius: 12px; margin-bottom: 10px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
+
+        /* 月曆樣式 */
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .cal-day { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 11px; }
         .cal-selected { background: var(--ios-blue); color: white; }
         .has-record::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; background: var(--ios-blue); border-radius: 50%; }
+
+        /* 按鈕樣式 */
         .btn-container { display: flex; gap: 8px; margin-top: 10px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
+
+        /* 列表樣式 */
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
         .edit-link { color: var(--ios-blue); font-size: 12px; text-decoration: none; padding: 4px 10px; border: 1px solid var(--ios-blue); border-radius: 6px; display: inline-block; }
+
+        /* 底部導覽列 */
         .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
         .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 10px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
@@ -84,7 +95,10 @@
     <div id="header" class="header-card neutral">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
-            <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px;">☁️ 雲端備份</button>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="fetchFromCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📥 下載</button>
+                <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">☁️ 備份</button>
+            </div>
         </div>
         <div class="total-val" id="monthTotal">0</div>
         <span style="font-size: 0.75rem;">本月合計</span>
@@ -104,7 +118,7 @@
 </nav>
 
 <script>
-    // 1. 初始化 Supabase
+    // 1. 初始化 Supabase (填入你的資訊)
     const SUPABASE_URL = 'https://cmrxqxycjzvrljxbhsmc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -114,7 +128,7 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
-    // 分頁切換
+    // 分頁切換 (點擊明細時自動取消編輯)
     function switchPage(pageId) {
         if (pageId === 'page-list' && editIdx > -1) resetForm();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -125,39 +139,47 @@
         document.getElementById(pageId).scrollTop = 0;
     }
 
-    // 雲端備份
+    // 備份功能 (手機 -> 雲端)
     async function uploadToCloud() {
         if (records.length === 0) return alert('目前沒有紀錄可以備份喔！');
         const btn = document.getElementById('cloudBtn');
         btn.innerText = "備份中..."; btn.disabled = true;
         try {
+            // 先刪除雲端所有舊紀錄
             await _supabase.from('records').delete().neq('date', '1900-01-01');
+            // 寫入手機目前的紀錄
             const { error: insError } = await _supabase.from('records').insert(records);
             if (insError) throw insError;
             alert('✅ 備份成功！');
         } catch (e) {
             alert('❌ 備份失敗：' + e.message);
         } finally {
-            btn.innerText = "☁️ 雲端備份"; btn.disabled = false;
+            btn.innerText = "☁️ 備份"; btn.disabled = false;
         }
     }
 
-    // 自動同步下載
+    // 下載功能 (雲端 -> 手機)
     async function fetchFromCloud() {
         try {
+            if (!confirm('確定要從雲端下載資料嗎？\n這將會覆蓋你這台手機目前的紀錄！')) return;
+            
             const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (error) throw error;
+
             if (data && data.length > 0) {
-                if (confirm(`雲端發現 ${data.length} 筆資料，要同步到這台手機嗎？`)) {
-                    records = data;
-                    localStorage.setItem('pokerRecords', JSON.stringify(records));
-                    render();
-                }
+                records = data;
+                localStorage.setItem('pokerRecords', JSON.stringify(records));
+                render();
+                alert(`✅ 下載成功！共下載 ${data.length} 筆資料。`);
+            } else {
+                alert('☁️ 雲端目前沒有任何資料。');
             }
-        } catch (e) { console.log('雲端無資料或連線問題'); }
+        } catch (e) {
+            alert('❌ 下載失敗：' + e.message);
+        }
     }
 
-    // --- 以下為核心邏輯 ---
+    // --- 核心運算邏輯 ---
     function initSelectors() {
         const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
@@ -206,7 +228,7 @@
     }
 
     function handleSave() {
-        const amt = document.getElementById('amount').value; if(!amt) return alert('勝敗金額？');
+        const amt = document.getElementById('amount').value; if(!amt) return alert('請輸入勝敗金額');
         const data = {
             date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
@@ -217,7 +239,7 @@
         resetForm(); setTimeout(() => { switchPage('page-list'); }, 50);
     }
 
-    function handleDelete() { if(confirm('刪除紀錄？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
+    function handleDelete() { if(confirm('確定要刪除這筆紀錄嗎？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
 
     function prepareEdit(idx) {
         editIdx = idx; const r = records[idx]; selectedDate = r.date;
@@ -234,7 +256,7 @@
         document.getElementById('editStatus').style.display = "none"; document.getElementById('deleteBtn').style.display = "none"; document.getElementById('cancelEdit').style.display = "none"; render();
     }
 
-    window.onload = () => { initSelectors(); render(); fetchFromCloud(); };
+    window.onload = () => { initSelectors(); render(); };
 </script>
 </body>
 </html>
