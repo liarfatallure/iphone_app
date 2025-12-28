@@ -19,28 +19,31 @@
         /* 密碼鎖畫面 */
         #lock-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(242, 242, 247, 0.8); z-index: 10000;
+            background: rgba(242, 242, 247, 0.9); z-index: 10000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
         }
         .passcode-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 80%; max-width: 300px; }
-        .passcode-title { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #1c1c1e; }
-        .passcode-input { 
-            width: 100%; text-align: center; font-size: 24px; border: 1px solid #C6C6C8; 
-            background: #F2F2F7; border-radius: 10px; padding: 12px; outline: none; 
-            -webkit-text-security: disc; margin-bottom: 15px; box-sizing: border-box;
-        }
+        .passcode-input { width: 100%; text-align: center; font-size: 24px; border: 1px solid #C6C6C8; background: #F2F2F7; border-radius: 10px; padding: 12px; outline: none; -webkit-text-security: disc; margin-bottom: 15px; box-sizing: border-box; }
         .unlock-btn { background: var(--ios-blue); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 16px; font-weight: bold; }
 
-        .safe-area-spacer { padding-top: env(safe-area-inset-top); background: var(--ios-bg); flex-shrink: 0; }
+        /* 修正：更可靠的安全區域頂部間距 */
+        .safe-area-spacer { 
+            height: env(safe-area-inset-top);
+            background: var(--ios-bg);
+            flex-shrink: 0;
+            width: 100%;
+        }
+
         .page { 
             display: none; flex: 1; overflow-y: auto; 
-            padding: 10px 12px calc(var(--tab-height) + 40px + env(safe-area-inset-bottom)) 12px; 
+            /* 頂部加入適度 padding 避免內容太貼狀態列 */
+            padding: 15px 12px calc(var(--tab-height) + 50px + env(safe-area-inset-bottom)) 12px; 
             box-sizing: border-box; -webkit-overflow-scrolling: touch; 
         }
-        .page.active { display: block; }
+        .page.active { display: flex; flex-direction: column; }
         
-        .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; }
+        .header-card { color: white; text-align: center; padding: 15px; border-radius: 15px; margin-bottom: 15px; }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
@@ -59,13 +62,14 @@
         .btn-container { display: flex; gap: 10px; margin-top: 15px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 17px; font-weight: bold; }
-        .cancel-link { display: block; text-align: center; margin-top: 20px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
+        .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
 
-        /* 設定頁面樣式 */
-        .settings-list { background: white; border-radius: 12px; overflow: hidden; list-style: none; padding: 0; margin: 0; }
-        .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 0.5px solid #E5E5EA; color: #000; text-decoration: none; font-size: 16px; cursor: pointer; }
+        /* 設定頁面樣式：合併清單 */
+        .settings-list { background: white; border-radius: 12px; overflow: hidden; list-style: none; padding: 0; margin: 0; border: 0.5px solid #C6C6C8; }
+        .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 15px; border-bottom: 0.5px solid #E5E5EA; color: #000; text-decoration: none; font-size: 16px; cursor: pointer; background: white; }
+        .settings-item:active { background: #E5E5EA; }
         .settings-item:last-child { border-bottom: none; }
-        .settings-item i { color: #8E8E93; font-style: normal; }
+        .settings-item i { color: #C6C6C8; font-style: normal; font-weight: bold; }
 
         table { width: 100%; border-collapse: collapse; }
         td { border-bottom: 0.5px solid #E5E5EA; padding: 12px 0; }
@@ -81,7 +85,7 @@
 
 <div id="lock-screen">
     <div class="passcode-container">
-        <div class="passcode-title" id="lock-title">請輸入密碼解鎖</div>
+        <div id="lock-title" style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">請輸入密碼解鎖</div>
         <input type="tel" id="passcode-field" class="passcode-input" placeholder="4-8位數字">
         <button class="unlock-btn" onclick="validateLock()">確定解鎖</button>
         <div id="lock-msg" style="margin-top: 10px; color: var(--ios-red); font-size: 12px;"></div>
@@ -101,17 +105,17 @@
     </div>
     <div class="card">
         <div id="editStatus" style="display:none; color:var(--ios-blue); font-size:13px; margin-bottom:10px; font-weight:bold;">📍 正在編輯紀錄</div>
-        <label>遊戲類型</label><input type="text" id="type" autocomplete="off">
+        <label>遊戲類型</label><input type="text" id="type" placeholder="如：大老二、麻將" autocomplete="off">
         <label>結算方式</label>
         <div style="display:flex; gap:8px;">
             <select id="methodSelect" style="flex:1;"><option value="底/台">底/台</option><option value="買入">買入</option></select>
-            <input type="text" id="methodDetail" autocomplete="off" style="flex:1;">
+            <input type="text" id="methodDetail" placeholder="內容" autocomplete="off" style="flex:1;">
         </div>
         <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label>勝敗</label><input type="text" id="amount" inputmode="text" autocomplete="off"></div>
-            <div style="flex:1;"><label>地點</label><input type="text" id="location" autocomplete="off"></div>
+            <div style="flex:1;"><label>勝敗金額</label><input type="text" id="amount" inputmode="text" placeholder="±金額" autocomplete="off"></div>
+            <div style="flex:1;"><label>地點</label><input type="text" id="location" placeholder="地點" autocomplete="off"></div>
         </div>
-        <label>備註</label><input type="text" id="note" autocomplete="off">
+        <label>備註</label><input type="text" id="note" placeholder="備註資訊" autocomplete="off">
         <div class="btn-container">
             <button id="submitBtn" class="main-btn" onclick="handleSave()">儲存戰績</button>
             <button id="deleteBtn" class="del-btn-edit" style="display:none;" onclick="handleDelete()">刪除</button>
@@ -122,11 +126,9 @@
 
 <div id="page-list" class="page">
     <div id="header" class="header-card neutral">
-        <div style="text-align: left; margin-bottom: 5px;">
-            <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
-        </div>
+        <div style="text-align: left; margin-bottom: 5px; opacity: 0.8; font-size: 0.8rem;" id="dispMonthLabel"></div>
         <div class="total-val" id="monthTotal">0</div>
-        <span style="font-size: 0.75rem;">本月合計</span>
+        <span style="font-size: 0.75rem; opacity: 0.9;">本月合計</span>
     </div>
     <div class="card">
         <div style="display:flex; gap:8px; margin-bottom:12px;">
@@ -138,34 +140,25 @@
 </div>
 
 <div id="page-settings" class="page">
-    <div style="margin-bottom: 20px;">
-        <h2 style="font-size: 24px; margin-bottom: 10px;">設定</h2>
+    <h2 style="font-size: 26px; margin: 10px 0 20px 5px;">設定</h2>
+    
+    <div class="settings-list">
+        <div class="settings-item" onclick="fetchFromCloud()">
+            <span>📥 下載雲端戰績</span>
+            <i>❯</i>
+        </div>
+        <div class="settings-item" id="cloudBtn" onclick="uploadToCloud()">
+            <span>☁️ 備份戰績到雲端</span>
+            <i>❯</i>
+        </div>
+        <div class="settings-item" onclick="changeAppPassword()">
+            <span>🔒 修改解鎖密碼</span>
+            <i>❯</i>
+        </div>
     </div>
     
-    <div class="card" style="padding:0;">
-        <ul class="settings-list">
-            <li class="settings-item" onclick="fetchFromCloud()">
-                <span>📥 下載雲端戰績</span>
-                <i>❯</i>
-            </li>
-            <li class="settings-item" id="cloudBtn" onclick="uploadToCloud()">
-                <span>☁️ 備份戰績到雲端</span>
-                <i>❯</i>
-            </li>
-        </ul>
-    </div>
-
-    <div class="card" style="padding:0;">
-        <ul class="settings-list">
-            <li class="settings-item" onclick="changeAppPassword()">
-                <span>🔒 修改解鎖密碼</span>
-                <i>❯</i>
-            </li>
-        </ul>
-    </div>
-    
-    <div style="text-align: center; color: #8E8E93; font-size: 12px; margin-top: 20px;">
-        戰績紀錄表 v2.0
+    <div style="text-align: center; color: #8E8E93; font-size: 13px; margin-top: 30px;">
+        戰績紀錄系統 v2.1<br>所有戰績均加密儲存於本機與雲端
     </div>
 </div>
 
@@ -186,55 +179,38 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
-    // --- 密碼邏輯 ---
     function validateLock() {
         const input = document.getElementById('passcode-field').value;
-        const msg = document.getElementById('lock-msg');
         if (!appPassword) {
-            if (input.length < 4 || input.length > 8) return msg.innerText = "請設定 4-8 位密碼";
+            if (input.length < 4 || input.length > 8) return alert("請設定 4-8 位密碼");
             localStorage.setItem('appPasscode', input);
-            appPassword = input;
-            unlockApp();
+            appPassword = input; unlockApp();
         } else {
             if (input === appPassword) unlockApp();
-            else { msg.innerText = "密碼錯誤"; document.getElementById('passcode-field').value = ''; }
+            else { alert("密碼錯誤"); document.getElementById('passcode-field').value = ''; }
         }
     }
-
     function unlockApp() { document.getElementById('lock-screen').style.display = 'none'; initSelectors(); render(); }
-    
     function changeAppPassword() {
         const old = prompt("請輸入舊密碼：");
         if (old !== appPassword) return alert("舊密碼不正確");
         const next = prompt("請輸入新密碼 (4-8位數字)：");
         if (next && next.length >= 4 && next.length <= 8) {
             localStorage.setItem('appPasscode', next);
-            appPassword = next;
-            alert("密碼已成功更新！");
-        } else { alert("密碼長度不符，修改失敗。"); }
+            appPassword = next; alert("密碼已成功更新！");
+        } else alert("格式不符，修改失敗。");
     }
 
-    // --- 分頁切換 ---
     function switchPage(pageId) {
         if (editIdx > -1) resetForm();
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
         document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        
-        document.getElementById(pageId).classList.add('active');
-        const tabKey = 'tab-' + pageId.split('-')[1];
-        document.getElementById(tabKey).classList.add('active');
-        
-        if (pageId !== 'page-settings') {
-            initSelectors(); 
-            render();
-        }
+        document.getElementById(pageId).style.display = 'flex';
+        document.getElementById('tab-' + pageId.split('-')[1]).classList.add('active');
+        if (pageId !== 'page-settings') { initSelectors(); render(); }
     }
 
-    // --- 雲端功能 ---
     async function uploadToCloud() {
-        const btn = document.getElementById('cloudBtn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = "<span>☁️ 同步中...</span>";
         try {
             const { data: cloudData } = await _supabase.from('records').select('*');
             let combinedMap = new Map();
@@ -245,13 +221,13 @@
             await _supabase.from('records').insert(finalData);
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
-            alert(`✅ 備份完成！共 ${finalData.length} 筆資料。`);
-        } catch (e) { alert('❌ 備份失敗'); } finally { btn.innerHTML = originalText; }
+            alert("✅ 雲端備份成功！");
+        } catch (e) { alert("❌ 同步失敗"); }
     }
 
     async function fetchFromCloud() {
         try {
-            if (!confirm('要從雲端下載並合併資料嗎？')) return;
+            if (!confirm('確定下載並合併雲端資料？')) return;
             const { data } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (data && data.length > 0) {
                 let combinedMap = new Map();
@@ -259,12 +235,11 @@
                 data.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 records = Array.from(combinedMap.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                alert(`✅ 已成功從雲端同步 ${data.length} 筆資料。`);
-            } else { alert('☁️ 雲端查無資料。'); }
-        } catch (e) { alert('❌ 下載失敗'); }
+                render(); alert("✅ 已成功同步雲端戰績！");
+            }
+        } catch (e) { alert("❌ 下載失敗"); }
     }
 
-    // --- 渲染與邏輯 ---
     function initSelectors() {
         const yearSel = document.getElementById('selectYear'), monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
@@ -303,7 +278,7 @@
         let total = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         document.getElementById('header').className = "header-card " + (total > 0 ? 'positive' : (total < 0 ? 'negative' : 'neutral'));
         document.getElementById('monthTotal').innerText = (total >= 0 ? '+' : '') + total.toLocaleString();
-        list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:20px;">無紀錄</td></tr>' : 
+        list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:30px;">無紀錄</td></tr>' : 
             filtered.map(r => {
                 const idx = records.indexOf(r), amt = parseFloat(r.amount) || 0;
                 return `<tr><td><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><strong style="font-size:16px; margin-left:5px;">${r.type}</strong><div style="font-size:12px; color:#666; margin-top:4px;">${r.method} | ${r.location}</div>${r.note?`<div style="font-size:11px; color:#999;">📝 ${r.note}</div>`:''}</div><div style="text-align:right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size:16px;">${amt>=0?'+'+amt.toLocaleString():amt.toLocaleString()}</span><br><a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a></div></div></td></tr>`;
