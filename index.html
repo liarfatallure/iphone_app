@@ -8,36 +8,55 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
     <link rel="apple-touch-icon" href="icon.png">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root { 
             --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
+            --ios-orange: #FF9500;
             --safe-top: 50px; --tab-height: 55px; 
         }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .safe-area-spacer { height: var(--safe-top); padding-top: env(safe-area-inset-top); flex-shrink: 0; }
         .page { display: none; flex: 1; overflow-y: auto; padding: 15px 12px 100px 12px; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
+        
+        /* 標題卡片 */
         .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
+
+        /* 卡片容器 */
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 12px; border-radius: 12px; margin-bottom: 10px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
+
+        /* 月曆樣式優化 */
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-        .cal-day { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; }
+        .cal-day { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; font-weight: 500; transition: all 0.2s; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 11px; }
-        .cal-selected { background: var(--ios-blue); color: white; }
-        .has-record::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; background: var(--ios-blue); border-radius: 50%; }
+        
+        /* 選中狀態：優先級最高，背景藍色，字變白 */
+        .cal-selected { background: var(--ios-blue) !important; color: white !important; font-weight: bold; }
+        
+        /* 有紀錄狀態：字變橘色加粗 */
+        .has-record { color: var(--ios-orange); font-weight: 800; }
+
+        /* 按鈕樣式 */
         .btn-container { display: flex; gap: 8px; margin-top: 10px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
+
+        /* 列表樣式 */
         table { width: 100%; border-collapse: collapse; }
         td { border-bottom: 0.5px solid #E5E5EA; }
         .edit-link { color: var(--ios-blue); font-size: 11px; text-decoration: none; padding: 3px 8px; border: 0.5px solid var(--ios-blue); border-radius: 5px; display: inline-block; }
+
+        /* 底部導覽列 */
         .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
         .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 10px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
@@ -124,48 +143,24 @@
         document.getElementById(pageId).scrollTop = 0;
     }
 
-    // 合併備份功能：不覆蓋雲端，而是將雲端與手機資料合併
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
         btn.innerText = "同步中..."; btn.disabled = true;
         try {
-            // 1. 先從雲端抓取目前的資料
             const { data: cloudData, error: fetchError } = await _supabase.from('records').select('*');
             if (fetchError) throw fetchError;
-
-            // 2. 合併手機本地與雲端的資料，使用特定欄位組合來排除重複
             let combinedMap = new Map();
-            
-            // 先放雲端的 (讓雲端資料作為基礎)
-            cloudData.forEach(r => {
-                const fingerprint = `${r.date}-${r.type}-${r.amount}-${r.note}`;
-                combinedMap.set(fingerprint, r);
-            });
-            
-            // 再放手機的 (如果有重複則以手機為準)
-            records.forEach(r => {
-                const fingerprint = `${r.date}-${r.type}-${r.amount}-${r.note}`;
-                combinedMap.set(fingerprint, r);
-            });
-
+            cloudData.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
+            records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
             const finalData = Array.from(combinedMap.values());
-
-            // 3. 更新雲端 (全集上傳)
             await _supabase.from('records').delete().neq('date', '1900-01-01');
             const { error: insError } = await _supabase.from('records').insert(finalData);
             if (insError) throw insError;
-
-            // 4. 同步回手機本地
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
-            
             render();
-            alert(`✅ 同步完成！目前雲端與手機共 ${finalData.length} 筆資料。`);
-        } catch (e) {
-            alert('❌ 同步失敗：' + e.message);
-        } finally {
-            btn.innerText = "☁️ 備份"; btn.disabled = false;
-        }
+            alert(`✅ 同步完成！目前共有 ${finalData.length} 筆資料。`);
+        } catch (e) { alert('❌ 同步失敗：' + e.message); } finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
     }
 
     async function fetchFromCloud() {
@@ -174,15 +169,12 @@
             const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (error) throw error;
             if (data && data.length > 0) {
-                // 下載後也進行一次合併，確保手機原有的資料不丟失
                 let combinedMap = new Map();
                 records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 data.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
-                
                 records = Array.from(combinedMap.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                render();
-                alert(`✅ 已同步雲端資料，目前共 ${records.length} 筆。`);
+                render(); alert(`✅ 已同步雲端資料，目前共 ${records.length} 筆。`);
             } else { alert('☁️ 雲端無資料。'); }
         } catch (e) { alert('❌ 下載失敗：' + e.message); }
     }
@@ -207,13 +199,18 @@
         const grid = document.getElementById('calendarGrid');
         const y = viewDate.getFullYear(); const m = viewDate.getMonth();
         document.getElementById('calMonthTitle').innerText = `${y}年${m + 1}月`;
-        let html = ''; ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
+        let html = ''; 
+        ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
         const first = new Date(y, m, 1).getDay(); const last = new Date(y, m + 1, 0).getDate();
         for (let i = 0; i < first; i++) html += '<div></div>';
         for (let d = 1; d <= last; d++) {
             const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const has = records.some(r => r.date === ds);
-            html += `<div class="cal-day ${selectedDate === ds ? 'cal-selected' : ''} ${has ? 'has-record' : ''}" onclick="selectedDate='${ds}';render();">${d}</div>`;
+            const isSelected = selectedDate === ds;
+            let classList = "cal-day";
+            if (isSelected) classList += " cal-selected";
+            if (has) classList += " has-record";
+            html += `<div class="${classList}" onclick="selectedDate='${ds}';render();">${d}</div>`;
         }
         grid.innerHTML = html;
     }
@@ -231,29 +228,7 @@
         list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:30px 0;">無紀錄</td></tr>' : 
             filtered.map(r => {
                 const idx = records.indexOf(r); const amt = parseFloat(r.amount) || 0;
-                return `
-                <tr>
-                    <td style="padding: 12px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <small style="color:#8E8E93">${r.date.split('-')[2]}日</small>
-                                <strong style="font-size: 16px; margin-left: 5px;">${r.type}</strong>
-                                <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                    <span>方式: ${r.method || ''}</span> | 
-                                    <span>地點: ${r.location || ''}</span>
-                                </div>
-                                ${r.note ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 ${r.note}</div>` : ''}
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size: 16px;">
-                                    ${amt >= 0 ? '+' + amt.toLocaleString() : amt.toLocaleString()}
-                                </span>
-                                <br>
-                                <a href="javascript:void(0)" class="edit-link" style="margin-top: 8px;" onclick="prepareEdit(${idx})">修改</a>
-                            </div>
-                        </div>
-                    </td>
-                </tr>`;
+                return `<tr><td style="padding: 12px 0;"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><div><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><strong style="font-size: 16px; margin-left: 5px;">${r.type}</strong><div style="font-size: 12px; color: #666; margin-top: 4px;"><span>方式: ${r.method || ''}</span> | <span>地點: ${r.location || ''}</span></div>${r.note ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 ${r.note}</div>` : ''}</div><div style="text-align: right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size: 16px;">${amt >= 0 ? '+' + amt.toLocaleString() : amt.toLocaleString()}</span><br><a href="javascript:void(0)" class="edit-link" style="margin-top: 8px;" onclick="prepareEdit(${idx})">修改</a></div></div></td></tr>`;
             }).join('');
     }
 
@@ -262,14 +237,10 @@
         if(!amtInput) return alert('請輸入勝敗金額');
         const amt = parseFloat(amtInput.replace(/,/g, ''));
         if(isNaN(amt)) return alert('金額格式錯誤');
-
         const data = {
-            date: selectedDate, 
-            type: document.getElementById('type').value || '未分類',
+            date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
-            amount: amt, 
-            location: document.getElementById('location').value, 
-            note: document.getElementById('note').value
+            amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
@@ -292,7 +263,6 @@
         document.getElementById('methodDetail').value = ''; document.getElementById('submitBtn').innerText = "儲存戰績";
         document.getElementById('editStatus').style.display = "none"; document.getElementById('deleteBtn').style.display = "none"; document.getElementById('cancelEdit').style.display = "none"; render();
     }
-
     window.onload = () => { initSelectors(); render(); };
 </script>
 </body>
