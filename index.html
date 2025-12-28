@@ -9,71 +9,39 @@
     <meta name="apple-mobile-web-app-title" content="戰績表">
     <link rel="apple-touch-icon" href="icon.png">
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root { 
             --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
-            --safe-top: 50px; /* 稍微調高，防止遮擋 */
-            --tab-height: 55px; 
+            --safe-top: 50px; --tab-height: 55px; 
         }
-
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); 
-            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-        }
-
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .safe-area-spacer { height: var(--safe-top); padding-top: env(safe-area-inset-top); flex-shrink: 0; }
-
-        .page { 
-            display: none; flex: 1; overflow-y: auto; 
-            padding: 15px 12px 100px 12px; /* 增加上方 Padding */
-            box-sizing: border-box; -webkit-overflow-scrolling: touch;
-        }
+        .page { display: none; flex: 1; overflow-y: auto; padding: 15px 12px 100px 12px; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
-
-        .header-card { 
-            color: white; text-align: center; padding: 12px; border-radius: 15px; 
-            margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+        .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
-
-        .card { 
-            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); 
-            padding: 12px; border-radius: 12px; margin-bottom: 10px; 
-        }
-        
+        .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 12px; border-radius: 12px; margin-bottom: 10px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
-        input, select { 
-            width: 100%; padding: 10px; border: 1px solid #C6C6C8; border-radius: 8px; 
-            font-size: 16px; box-sizing: border-box; background: white; 
-        }
-
+        input, select { width: 100%; padding: 10px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .cal-day { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 11px; }
         .cal-selected { background: var(--ios-blue); color: white; }
         .has-record::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; background: var(--ios-blue); border-radius: 50%; }
-
         .btn-container { display: flex; gap: 8px; margin-top: 10px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
-
         table { width: 100%; border-collapse: collapse; }
         td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
         .edit-link { color: var(--ios-blue); font-size: 12px; text-decoration: none; padding: 4px 10px; border: 1px solid var(--ios-blue); border-radius: 6px; display: inline-block; }
-
-        .tab-bar { 
-            position: fixed; bottom: 0; width: 100%; height: var(--tab-height); 
-            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); 
-            display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; 
-        }
-        .tab-item { 
-            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #8E8E93; font-size: 10px; text-decoration: none; 
-        }
+        .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
+        .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 10px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
         .tab-item i { font-style: normal; font-size: 18px; margin-bottom: 1px; }
     </style>
@@ -91,11 +59,9 @@
         </div>
         <div id="calendarGrid"></div>
     </div>
-
     <div class="card">
         <div id="editStatus" style="display:none; color:var(--ios-blue); font-size:12px; margin-bottom:8px; font-weight:bold;">📍 正在編輯紀錄</div>
-        <label>遊戲類型</label>
-        <input type="text" id="type" autocomplete="off">
+        <label>遊戲類型</label><input type="text" id="type" autocomplete="off">
         <label>結算方式</label>
         <div style="display:flex; gap:8px;">
             <select id="methodSelect" style="flex:1;"><option value="底/台">底/台</option><option value="買入">買入</option></select>
@@ -118,7 +84,7 @@
     <div id="header" class="header-card neutral">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
-            <button onclick="uploadToServer()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px;">☁️ 同步</button>
+            <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px;">☁️ 雲端備份</button>
         </div>
         <div class="total-val" id="monthTotal">0</div>
         <span style="font-size: 0.75rem;">本月合計</span>
@@ -138,32 +104,65 @@
 </nav>
 
 <script>
-    /* JS 部分完全保留，已整合自動取消編輯邏輯 */
+    // 1. 初始化 Supabase
+    const SUPABASE_URL = 'https://cmrxqxycjzvrljxbhsmc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
     let viewDate = new Date(); 
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
+    // 分頁切換
     function switchPage(pageId) {
-        if (pageId === 'page-list' && editIdx > -1) {
-            resetForm();
-        }
+        if (pageId === 'page-list' && editIdx > -1) resetForm();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         document.getElementById('tab-' + pageId.split('-')[1]).classList.add('active');
-        initSelectors();
-        render();
+        initSelectors(); render();
         document.getElementById(pageId).scrollTop = 0;
     }
 
+    // 雲端備份
+    async function uploadToCloud() {
+        if (records.length === 0) return alert('目前沒有紀錄可以備份喔！');
+        const btn = document.getElementById('cloudBtn');
+        btn.innerText = "備份中..."; btn.disabled = true;
+        try {
+            await _supabase.from('records').delete().neq('date', '1900-01-01');
+            const { error: insError } = await _supabase.from('records').insert(records);
+            if (insError) throw insError;
+            alert('✅ 備份成功！');
+        } catch (e) {
+            alert('❌ 備份失敗：' + e.message);
+        } finally {
+            btn.innerText = "☁️ 雲端備份"; btn.disabled = false;
+        }
+    }
+
+    // 自動同步下載
+    async function fetchFromCloud() {
+        try {
+            const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
+            if (error) throw error;
+            if (data && data.length > 0) {
+                if (confirm(`雲端發現 ${data.length} 筆資料，要同步到這台手機嗎？`)) {
+                    records = data;
+                    localStorage.setItem('pokerRecords', JSON.stringify(records));
+                    render();
+                }
+            }
+        } catch (e) { console.log('雲端無資料或連線問題'); }
+    }
+
+    // --- 以下為核心邏輯 ---
     function initSelectors() {
-        const yearSel = document.getElementById('selectYear');
-        const monthSel = document.getElementById('selectMonth');
+        const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
         const years = [...new Set(records.map(r => r.date.split('-')[0]))];
-        const cy = new Date().getFullYear().toString();
-        if(!years.includes(cy)) years.push(cy);
+        const cy = new Date().getFullYear().toString(); if(!years.includes(cy)) years.push(cy);
         years.sort((a,b) => b-a);
         yearSel.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
         yearSel.value = viewDate.getFullYear();
@@ -172,19 +171,14 @@
         monthSel.value = String(viewDate.getMonth() + 1).padStart(2, '0');
     }
 
-    function updateListFilter() {
-        viewDate = new Date(`${document.getElementById('selectYear').value}-${document.getElementById('selectMonth').value}-01`);
-        render();
-    }
-
+    function updateListFilter() { viewDate = new Date(`${document.getElementById('selectYear').value}-${document.getElementById('selectMonth').value}-01`); render(); }
     function changeMonth(s) { viewDate.setMonth(viewDate.getMonth() + s); render(); }
 
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         const y = viewDate.getFullYear(); const m = viewDate.getMonth();
         document.getElementById('calMonthTitle').innerText = `${y}年${m + 1}月`;
-        let html = '';
-        ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
+        let html = ''; ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
         const first = new Date(y, m, 1).getDay(); const last = new Date(y, m + 1, 0).getDate();
         for (let i = 0; i < first; i++) html += '<div></div>';
         for (let d = 1; d <= last; d++) {
@@ -197,8 +191,7 @@
 
     function render() {
         renderCalendar();
-        const list = document.getElementById('recordList');
-        if(!list) return;
+        const list = document.getElementById('recordList'); if(!list) return;
         const y = viewDate.getFullYear(), m = String(viewDate.getMonth() + 1).padStart(2, '0');
         document.getElementById('dispMonthLabel').innerText = `${y} 年 ${m} 月`;
         const filtered = records.filter(r => r.date.startsWith(`${y}-${m}`));
@@ -208,19 +201,12 @@
         list.innerHTML = filtered.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#8E8E93; padding:30px 0;">無紀錄</td></tr>' : 
             filtered.map(r => {
                 const idx = records.indexOf(r); const amt = parseFloat(r.amount) || 0;
-                return `<tr>
-                    <td><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><br><strong>${r.type}</strong></td>
-                    <td style="font-size:12px; text-align:center;">${r.method}</td>
-                    <td style="text-align:right;">
-                        <span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold;">${amt>=0?'+'+amt:amt}</span><br>
-                        <a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a>
-                    </td>
-                </tr>`;
+                return `<tr><td><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><br><strong>${r.type}</strong></td><td style="font-size:12px; text-align:center;">${r.method}</td><td style="text-align:right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold;">${amt>=0?'+'+amt:amt}</span><br><a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a></td></tr>`;
             }).join('');
     }
 
     function handleSave() {
-        const amt = document.getElementById('amount').value; if(!amt) return alert('金額？');
+        const amt = document.getElementById('amount').value; if(!amt) return alert('勝敗金額？');
         const data = {
             date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
@@ -228,20 +214,16 @@
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
-        resetForm();
-        setTimeout(() => { switchPage('page-list'); }, 50);
+        resetForm(); setTimeout(() => { switchPage('page-list'); }, 50);
     }
 
-    function handleDelete() { if(confirm('刪除？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
+    function handleDelete() { if(confirm('刪除紀錄？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
 
     function prepareEdit(idx) {
         editIdx = idx; const r = records[idx]; selectedDate = r.date;
         document.getElementById('type').value = r.type; document.getElementById('amount').value = r.amount;
         document.getElementById('location').value = r.location; document.getElementById('note').value = r.note;
-        document.getElementById('submitBtn').innerText = "儲存修改";
-        document.getElementById('editStatus').style.display = "block";
-        document.getElementById('deleteBtn').style.display = "block";
-        document.getElementById('cancelEdit').style.display = "block";
+        document.getElementById('submitBtn').innerText = "儲存修改"; document.getElementById('editStatus').style.display = "block"; document.getElementById('deleteBtn').style.display = "block"; document.getElementById('cancelEdit').style.display = "block";
         switchPage('page-form');
     }
 
@@ -249,22 +231,10 @@
         editIdx = -1; document.getElementById('type').value = ''; document.getElementById('amount').value = '';
         document.getElementById('location').value = ''; document.getElementById('note').value = '';
         document.getElementById('methodDetail').value = ''; document.getElementById('submitBtn').innerText = "儲存戰績";
-        document.getElementById('editStatus').style.display = "none"; document.getElementById('deleteBtn').style.display = "none";
-        document.getElementById('cancelEdit').style.display = "none"; render();
+        document.getElementById('editStatus').style.display = "none"; document.getElementById('deleteBtn').style.display = "none"; document.getElementById('cancelEdit').style.display = "none"; render();
     }
 
-    async function uploadToServer() {
-        const pcIP = "192.168.1.100"; // 請修改此處 IP
-        try {
-            const res = await fetch(`http://${pcIP}:3000/upload`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(records)
-            });
-            const out = await res.json();
-            if(out.status === 'success') alert('✅ 備份成功');
-        } catch (e) { alert('❌ 無法備份 (IP/伺服器錯誤)'); }
-    }
-
-    window.onload = () => { initSelectors(); render(); };
+    window.onload = () => { initSelectors(); render(); fetchFromCloud(); };
 </script>
 </body>
 </html>
