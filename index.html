@@ -6,65 +6,87 @@
     <title>戰績紀錄表</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="戰績表">
     <link rel="apple-touch-icon" href="icon.png">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         :root { 
             --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
-            --ios-orange: #FF9500;
-            --tab-height: 60px; 
+            --ios-orange: #FF9500; --tab-height: 60px; 
         }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* 修正：移除固定高度，改用動態安全區域內距 */
-        .safe-area-spacer { 
-            padding-top: env(safe-area-inset-top); /* 自動抓取狀態列高度 */
-            background: var(--ios-bg);
-            flex-shrink: 0; 
+        /* 密碼鎖畫面 */
+        #lock-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(242, 242, 247, 0.8); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
         }
+        .passcode-container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 80%; max-width: 300px; }
+        .passcode-title { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #1c1c1e; }
+        .passcode-input { 
+            width: 100%; text-align: center; font-size: 24px; border: 1px solid #C6C6C8; 
+            background: #F2F2F7; border-radius: 10px; padding: 12px; outline: none; 
+            -webkit-text-security: disc; margin-bottom: 15px; box-sizing: border-box;
+        }
+        .unlock-btn { background: var(--ios-blue); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 16px; font-weight: bold; }
 
+        .safe-area-spacer { padding-top: env(safe-area-inset-top); background: var(--ios-bg); flex-shrink: 0; }
         .page { 
-            display: none; 
-            flex: 1; 
-            overflow-y: auto; 
-            /* 頂部只留 10px 的呼吸空間 */
+            display: none; flex: 1; overflow-y: auto; 
             padding: 10px 12px calc(var(--tab-height) + 40px + env(safe-area-inset-bottom)) 12px; 
-            box-sizing: border-box; 
-            -webkit-overflow-scrolling: touch; 
+            box-sizing: border-box; -webkit-overflow-scrolling: touch; 
         }
         .page.active { display: block; }
         
-        /* 其他樣式保持不變 */
-        .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
+        
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; -webkit-appearance: none; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
+        
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-        .cal-day { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; font-weight: 500; }
+        .cal-day { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 11px; }
         .cal-selected { background: var(--ios-blue) !important; color: white !important; font-weight: bold; }
         .has-record { color: var(--ios-orange); font-weight: 800; }
+        
         .btn-container { display: flex; gap: 10px; margin-top: 15px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 17px; font-weight: bold; }
-        .cancel-link { display: block; text-align: center; margin-top: 25px; margin-bottom: 20px; color: var(--ios-blue); font-size: 15px; text-decoration: none; padding: 10px; }
+        .cancel-link { display: block; text-align: center; margin-top: 20px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
+
+        /* 設定頁面樣式 */
+        .settings-list { background: white; border-radius: 12px; overflow: hidden; list-style: none; padding: 0; margin: 0; }
+        .settings-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 0.5px solid #E5E5EA; color: #000; text-decoration: none; font-size: 16px; cursor: pointer; }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-item i { color: #8E8E93; font-style: normal; }
+
         table { width: 100%; border-collapse: collapse; }
-        td { border-bottom: 0.5px solid #E5E5EA; }
+        td { border-bottom: 0.5px solid #E5E5EA; padding: 12px 0; }
         .edit-link { color: var(--ios-blue); font-size: 11px; text-decoration: none; padding: 4px 10px; border: 0.5px solid var(--ios-blue); border-radius: 5px; display: inline-block; }
-        .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tab-height); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 9999; }
+        
+        .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tab-height); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 999; }
         .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 11px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
         .tab-item i { font-style: normal; font-size: 20px; margin-bottom: 2px; }
     </style>
 </head>
 <body>
+
+<div id="lock-screen">
+    <div class="passcode-container">
+        <div class="passcode-title" id="lock-title">請輸入密碼解鎖</div>
+        <input type="tel" id="passcode-field" class="passcode-input" placeholder="4-8位數字">
+        <button class="unlock-btn" onclick="validateLock()">確定解鎖</button>
+        <div id="lock-msg" style="margin-top: 10px; color: var(--ios-red); font-size: 12px;"></div>
+    </div>
+</div>
 
 <div class="safe-area-spacer"></div>
 
@@ -100,28 +122,57 @@
 
 <div id="page-list" class="page">
     <div id="header" class="header-card neutral">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="text-align: left; margin-bottom: 5px;">
             <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
-            <div style="display: flex; gap: 8px;">
-                <button onclick="fetchFromCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📥 下載</button>
-                <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">☁️ 備份</button>
-            </div>
         </div>
         <div class="total-val" id="monthTotal">0</div>
         <span style="font-size: 0.75rem;">本月合計</span>
     </div>
     <div class="card">
         <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <select id="selectYear" onchange="updateListFilter()" style="padding:6px; font-size:14px; flex:1;"></select>
-            <select id="selectMonth" onchange="updateListFilter()" style="padding:6px; font-size:14px; flex:1;"></select>
+            <select id="selectYear" onchange="updateListFilter()" style="flex:1;"></select>
+            <select id="selectMonth" onchange="updateListFilter()" style="flex:1;"></select>
         </div>
         <table><tbody id="recordList"></tbody></table>
+    </div>
+</div>
+
+<div id="page-settings" class="page">
+    <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 24px; margin-bottom: 10px;">設定</h2>
+    </div>
+    
+    <div class="card" style="padding:0;">
+        <ul class="settings-list">
+            <li class="settings-item" onclick="fetchFromCloud()">
+                <span>📥 下載雲端戰績</span>
+                <i>❯</i>
+            </li>
+            <li class="settings-item" id="cloudBtn" onclick="uploadToCloud()">
+                <span>☁️ 備份戰績到雲端</span>
+                <i>❯</i>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card" style="padding:0;">
+        <ul class="settings-list">
+            <li class="settings-item" onclick="changeAppPassword()">
+                <span>🔒 修改解鎖密碼</span>
+                <i>❯</i>
+            </li>
+        </ul>
+    </div>
+    
+    <div style="text-align: center; color: #8E8E93; font-size: 12px; margin-top: 20px;">
+        戰績紀錄表 v2.0
     </div>
 </div>
 
 <nav class="tab-bar">
     <a href="javascript:void(0)" class="tab-item active" id="tab-form" onclick="switchPage('page-form')"><i>➕</i><span>新增紀錄</span></a>
     <a href="javascript:void(0)" class="tab-item" id="tab-list" onclick="switchPage('page-list')"><i>📜</i><span>輸贏明細</span></a>
+    <a href="javascript:void(0)" class="tab-item" id="tab-settings" onclick="switchPage('page-settings')"><i>⚙️</i><span>設定</span></a>
 </nav>
 
 <script>
@@ -130,66 +181,98 @@
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
+    let appPassword = localStorage.getItem('appPasscode');
     let viewDate = new Date(); 
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
-    function switchPage(pageId) {
-        if (pageId === 'page-list' && editIdx > -1) resetForm();
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        document.getElementById(pageId).classList.add('active');
-        document.getElementById('tab-' + pageId.split('-')[1]).classList.add('active');
-        initSelectors(); render();
-        document.getElementById(pageId).scrollTop = 0;
+    // --- 密碼邏輯 ---
+    function validateLock() {
+        const input = document.getElementById('passcode-field').value;
+        const msg = document.getElementById('lock-msg');
+        if (!appPassword) {
+            if (input.length < 4 || input.length > 8) return msg.innerText = "請設定 4-8 位密碼";
+            localStorage.setItem('appPasscode', input);
+            appPassword = input;
+            unlockApp();
+        } else {
+            if (input === appPassword) unlockApp();
+            else { msg.innerText = "密碼錯誤"; document.getElementById('passcode-field').value = ''; }
+        }
     }
 
+    function unlockApp() { document.getElementById('lock-screen').style.display = 'none'; initSelectors(); render(); }
+    
+    function changeAppPassword() {
+        const old = prompt("請輸入舊密碼：");
+        if (old !== appPassword) return alert("舊密碼不正確");
+        const next = prompt("請輸入新密碼 (4-8位數字)：");
+        if (next && next.length >= 4 && next.length <= 8) {
+            localStorage.setItem('appPasscode', next);
+            appPassword = next;
+            alert("密碼已成功更新！");
+        } else { alert("密碼長度不符，修改失敗。"); }
+    }
+
+    // --- 分頁切換 ---
+    function switchPage(pageId) {
+        if (editIdx > -1) resetForm();
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        
+        document.getElementById(pageId).classList.add('active');
+        const tabKey = 'tab-' + pageId.split('-')[1];
+        document.getElementById(tabKey).classList.add('active');
+        
+        if (pageId !== 'page-settings') {
+            initSelectors(); 
+            render();
+        }
+    }
+
+    // --- 雲端功能 ---
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
-        btn.innerText = "同步中..."; btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "<span>☁️ 同步中...</span>";
         try {
-            const { data: cloudData, error: fetchError } = await _supabase.from('records').select('*');
-            if (fetchError) throw fetchError;
+            const { data: cloudData } = await _supabase.from('records').select('*');
             let combinedMap = new Map();
-            cloudData.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
+            (cloudData || []).forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
             records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
             const finalData = Array.from(combinedMap.values());
             await _supabase.from('records').delete().neq('date', '1900-01-01');
-            const { error: insError } = await _supabase.from('records').insert(finalData);
-            if (insError) throw insError;
+            await _supabase.from('records').insert(finalData);
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
-            render();
-            alert(`✅ 同步完成！目前共 ${finalData.length} 筆資料。`);
-        } catch (e) { alert('❌ 同步失敗：' + e.message); } finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
+            alert(`✅ 備份完成！共 ${finalData.length} 筆資料。`);
+        } catch (e) { alert('❌ 備份失敗'); } finally { btn.innerHTML = originalText; }
     }
 
     async function fetchFromCloud() {
         try {
-            if (!confirm('要下載雲端資料並合併嗎？')) return;
-            const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
-            if (error) throw error;
+            if (!confirm('要從雲端下載並合併資料嗎？')) return;
+            const { data } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (data && data.length > 0) {
                 let combinedMap = new Map();
                 records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 data.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 records = Array.from(combinedMap.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                render(); alert(`✅ 已下載並同步。`);
-            } else { alert('☁️ 雲端無資料。'); }
-        } catch (e) { alert('❌ 下載失敗：' + e.message); }
+                alert(`✅ 已成功從雲端同步 ${data.length} 筆資料。`);
+            } else { alert('☁️ 雲端查無資料。'); }
+        } catch (e) { alert('❌ 下載失敗'); }
     }
 
+    // --- 渲染與邏輯 ---
     function initSelectors() {
-        const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
+        const yearSel = document.getElementById('selectYear'), monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
         const years = [...new Set(records.map(r => r.date.split('-')[0]))];
         const cy = new Date().getFullYear().toString(); if(!years.includes(cy)) years.push(cy);
-        years.sort((a,b) => b-a);
-        yearSel.innerHTML = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+        yearSel.innerHTML = years.sort((a,b)=>b-a).map(y => `<option value="${y}">${y}年</option>`).join('');
         yearSel.value = viewDate.getFullYear();
-        const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
-        monthSel.innerHTML = months.map(m => `<option value="${m}">${parseInt(m)}月</option>`).join('');
+        monthSel.innerHTML = Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0')).map(m => `<option value="${m}">${parseInt(m)}月</option>`).join('');
         monthSel.value = String(viewDate.getMonth() + 1).padStart(2, '0');
     }
 
@@ -198,20 +281,15 @@
 
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
-        const y = viewDate.getFullYear(); const m = viewDate.getMonth();
+        const y = viewDate.getFullYear(), m = viewDate.getMonth();
         document.getElementById('calMonthTitle').innerText = `${y}年${m + 1}月`;
-        let html = ''; 
-        ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
-        const first = new Date(y, m, 1).getDay(); const last = new Date(y, m + 1, 0).getDate();
+        let html = ''; ['日','一','二','三','四','五','六'].forEach(d => html += `<div class="cal-day cal-header">${d}</div>`);
+        const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
         for (let i = 0; i < first; i++) html += '<div></div>';
         for (let d = 1; d <= last; d++) {
             const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const has = records.some(r => r.date === ds);
-            const isSelected = selectedDate === ds;
-            let classList = "cal-day";
-            if (isSelected) classList += " cal-selected";
-            if (has) classList += " has-record";
-            html += `<div class="${classList}" onclick="selectedDate='${ds}';render();">${d}</div>`;
+            const has = records.some(r => r.date === ds), isSelected = selectedDate === ds;
+            html += `<div class="cal-day ${isSelected?'cal-selected':''} ${has?'has-record':''}" onclick="selectedDate='${ds}';render();">${d}</div>`;
         }
         grid.innerHTML = html;
     }
@@ -225,46 +303,47 @@
         let total = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         document.getElementById('header').className = "header-card " + (total > 0 ? 'positive' : (total < 0 ? 'negative' : 'neutral'));
         document.getElementById('monthTotal').innerText = (total >= 0 ? '+' : '') + total.toLocaleString();
-
-        list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:30px 0;">無紀錄</td></tr>' : 
+        list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:20px;">無紀錄</td></tr>' : 
             filtered.map(r => {
-                const idx = records.indexOf(r); const amt = parseFloat(r.amount) || 0;
-                return `<tr><td style="padding: 12px 0;"><div style="display: flex; justify-content: space-between; align-items: flex-start;"><div><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><strong style="font-size: 16px; margin-left: 5px;">${r.type}</strong><div style="font-size: 12px; color: #666; margin-top: 4px;"><span>方式: ${r.method || ''}</span> | <span>地點: ${r.location || ''}</span></div>${r.note ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 ${r.note}</div>` : ''}</div><div style="text-align: right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size: 16px;">${amt >= 0 ? '+' + amt.toLocaleString() : amt.toLocaleString()}</span><br><a href="javascript:void(0)" class="edit-link" style="margin-top: 8px;" onclick="prepareEdit(${idx})">修改</a></div></div></td></tr>`;
+                const idx = records.indexOf(r), amt = parseFloat(r.amount) || 0;
+                return `<tr><td><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><strong style="font-size:16px; margin-left:5px;">${r.type}</strong><div style="font-size:12px; color:#666; margin-top:4px;">${r.method} | ${r.location}</div>${r.note?`<div style="font-size:11px; color:#999;">📝 ${r.note}</div>`:''}</div><div style="text-align:right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size:16px;">${amt>=0?'+'+amt.toLocaleString():amt.toLocaleString()}</span><br><a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a></div></div></td></tr>`;
             }).join('');
     }
 
     function handleSave() {
         const amtInput = document.getElementById('amount').value;
         if(!amtInput) return alert('請輸入勝敗金額');
-        const amt = parseFloat(amtInput.replace(/,/g, ''));
-        if(isNaN(amt)) return alert('金額格式錯誤');
         const data = {
             date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
-            amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value
+            amount: parseFloat(amtInput.replace(/,/g, '')), location: document.getElementById('location').value, note: document.getElementById('note').value
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
-        resetForm(); setTimeout(() => { switchPage('page-list'); }, 50);
+        resetForm(); switchPage('page-list');
     }
 
-    function handleDelete() { if(confirm('確定要刪除這筆紀錄嗎？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
+    function handleDelete() { if(confirm('確定刪除？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
 
     function prepareEdit(idx) {
         editIdx = idx; const r = records[idx]; selectedDate = r.date;
         document.getElementById('type').value = r.type; document.getElementById('amount').value = r.amount;
         document.getElementById('location').value = r.location; document.getElementById('note').value = r.note;
-        document.getElementById('submitBtn').innerText = "儲存修改"; document.getElementById('editStatus').style.display = "block"; document.getElementById('deleteBtn').style.display = "block"; document.getElementById('cancelEdit').style.display = "block";
+        document.getElementById('submitBtn').innerText = "儲存修改"; 
+        document.getElementById('editStatus').style.display = "block"; 
+        document.getElementById('deleteBtn').style.display = "block"; 
+        document.getElementById('cancelEdit').style.display = "block";
         switchPage('page-form');
     }
 
     function resetForm() {
-        editIdx = -1; document.getElementById('type').value = ''; document.getElementById('amount').value = '';
-        document.getElementById('location').value = ''; document.getElementById('note').value = '';
-        document.getElementById('methodDetail').value = ''; document.getElementById('submitBtn').innerText = "儲存戰績";
-        document.getElementById('editStatus').style.display = "none"; document.getElementById('deleteBtn').style.display = "none"; document.getElementById('cancelEdit').style.display = "none"; render();
+        editIdx = -1; ['type','amount','location','note','methodDetail'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('submitBtn').innerText = "儲存戰績";
+        ['editStatus','deleteBtn','cancelEdit'].forEach(id => document.getElementById(id).style.display = "none");
+        render();
     }
-    window.onload = () => { initSelectors(); render(); };
+    
+    window.onload = () => { if (!appPassword) document.getElementById('lock-title').innerText = "第一次啟動，請設定密碼"; };
 </script>
 </body>
 </html>
