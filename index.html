@@ -7,11 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
-    
     <link rel="apple-touch-icon" href="icon.png">
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         :root { 
             --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
@@ -21,38 +18,26 @@
         .safe-area-spacer { height: var(--safe-top); padding-top: env(safe-area-inset-top); flex-shrink: 0; }
         .page { display: none; flex: 1; overflow-y: auto; padding: 15px 12px 100px 12px; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
         .page.active { display: block; }
-        
-        /* 標題卡片 */
         .header-card { color: white; text-align: center; padding: 12px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .positive { background-color: var(--ios-green); }
         .negative { background-color: var(--ios-red); }
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
-
-        /* 卡片容器 */
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 12px; border-radius: 12px; margin-bottom: 10px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; }
-
-        /* 月曆樣式 */
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .cal-day { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; }
         .cal-header { font-weight: bold; color: #8E8E93; font-size: 11px; }
         .cal-selected { background: var(--ios-blue); color: white; }
         .has-record::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; background: var(--ios-blue); border-radius: 50%; }
-
-        /* 按鈕樣式 */
         .btn-container { display: flex; gap: 8px; margin-top: 10px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; }
         .cancel-link { display: block; text-align: center; margin-top: 15px; color: var(--ios-blue); font-size: 14px; text-decoration: none; padding: 10px; }
-
-        /* 列表樣式 */
         table { width: 100%; border-collapse: collapse; }
         td { border-bottom: 0.5px solid #E5E5EA; }
         .edit-link { color: var(--ios-blue); font-size: 11px; text-decoration: none; padding: 3px 8px; border: 0.5px solid var(--ios-blue); border-radius: 5px; display: inline-block; }
-
-        /* 底部導覽列 */
         .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
         .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 10px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
@@ -78,7 +63,7 @@
         <label>結算方式</label>
         <div style="display:flex; gap:8px;">
             <select id="methodSelect" style="flex:1;"><option value="底/台">底/台</option><option value="買入">買入</option></select>
-            <input type="text" id="methodDetail" style="flex:1;" autocomplete="off">
+            <input type="text" id="methodDetail" autocomplete="off" style="flex:1;">
         </div>
         <div style="display:flex; gap:8px;">
             <div style="flex:1;"><label>勝敗</label><input type="text" id="amount" inputmode="text" autocomplete="off"></div>
@@ -139,27 +124,65 @@
         document.getElementById(pageId).scrollTop = 0;
     }
 
+    // 合併備份功能：不覆蓋雲端，而是將雲端與手機資料合併
     async function uploadToCloud() {
-        if (records.length === 0) return alert('目前沒有紀錄可以備份喔！');
         const btn = document.getElementById('cloudBtn');
-        btn.innerText = "備份中..."; btn.disabled = true;
+        btn.innerText = "同步中..."; btn.disabled = true;
         try {
+            // 1. 先從雲端抓取目前的資料
+            const { data: cloudData, error: fetchError } = await _supabase.from('records').select('*');
+            if (fetchError) throw fetchError;
+
+            // 2. 合併手機本地與雲端的資料，使用特定欄位組合來排除重複
+            let combinedMap = new Map();
+            
+            // 先放雲端的 (讓雲端資料作為基礎)
+            cloudData.forEach(r => {
+                const fingerprint = `${r.date}-${r.type}-${r.amount}-${r.note}`;
+                combinedMap.set(fingerprint, r);
+            });
+            
+            // 再放手機的 (如果有重複則以手機為準)
+            records.forEach(r => {
+                const fingerprint = `${r.date}-${r.type}-${r.amount}-${r.note}`;
+                combinedMap.set(fingerprint, r);
+            });
+
+            const finalData = Array.from(combinedMap.values());
+
+            // 3. 更新雲端 (全集上傳)
             await _supabase.from('records').delete().neq('date', '1900-01-01');
-            const { error: insError } = await _supabase.from('records').insert(records);
+            const { error: insError } = await _supabase.from('records').insert(finalData);
             if (insError) throw insError;
-            alert('✅ 雲端備份成功！');
-        } catch (e) { alert('❌ 備份失敗：' + e.message); } finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
+
+            // 4. 同步回手機本地
+            records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            localStorage.setItem('pokerRecords', JSON.stringify(records));
+            
+            render();
+            alert(`✅ 同步完成！目前雲端與手機共 ${finalData.length} 筆資料。`);
+        } catch (e) {
+            alert('❌ 同步失敗：' + e.message);
+        } finally {
+            btn.innerText = "☁️ 備份"; btn.disabled = false;
+        }
     }
 
     async function fetchFromCloud() {
         try {
-            if (!confirm('確定要從雲端下載嗎？這將覆蓋本機資料。')) return;
+            if (!confirm('要從雲端下載最新資料並合併嗎？')) return;
             const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (error) throw error;
             if (data && data.length > 0) {
-                records = data;
+                // 下載後也進行一次合併，確保手機原有的資料不丟失
+                let combinedMap = new Map();
+                records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
+                data.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
+                
+                records = Array.from(combinedMap.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                render(); alert(`✅ 下載成功！共 ${data.length} 筆資料。`);
+                render();
+                alert(`✅ 已同步雲端資料，目前共 ${records.length} 筆。`);
             } else { alert('☁️ 雲端無資料。'); }
         } catch (e) { alert('❌ 下載失敗：' + e.message); }
     }
@@ -235,11 +258,18 @@
     }
 
     function handleSave() {
-        const amt = document.getElementById('amount').value; if(!amt) return alert('請輸入勝敗金額');
+        const amtInput = document.getElementById('amount').value;
+        if(!amtInput) return alert('請輸入勝敗金額');
+        const amt = parseFloat(amtInput.replace(/,/g, ''));
+        if(isNaN(amt)) return alert('金額格式錯誤');
+
         const data = {
-            date: selectedDate, type: document.getElementById('type').value || '未分類',
+            date: selectedDate, 
+            type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
-            amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value
+            amount: amt, 
+            location: document.getElementById('location').value, 
+            note: document.getElementById('note').value
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
