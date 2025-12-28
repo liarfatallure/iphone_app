@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>戰績紀錄表 - 雲端版</title>
+    <title>戰績紀錄表</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
     
+    <link rel="apple-touch-icon" href="icon.png">
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -47,11 +49,11 @@
 
         /* 列表樣式 */
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 12px 0; border-bottom: 0.5px solid #E5E5EA; font-size: 14px; }
-        .edit-link { color: var(--ios-blue); font-size: 12px; text-decoration: none; padding: 4px 10px; border: 1px solid var(--ios-blue); border-radius: 6px; display: inline-block; }
+        td { border-bottom: 0.5px solid #E5E5EA; }
+        .edit-link { color: var(--ios-blue); font-size: 11px; text-decoration: none; padding: 3px 8px; border: 0.5px solid var(--ios-blue); border-radius: 5px; display: inline-block; }
 
         /* 底部導覽列 */
-        .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
+        .tab-bar { position: fixed; bottom: 0; width: 100%; height: var(--tab-height); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); display: flex; border-top: 0.5px solid #C6C6C8; padding-bottom: env(safe-area-inset-bottom); z-index: 1000; }
         .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8E8E93; font-size: 10px; text-decoration: none; }
         .tab-item.active { color: var(--ios-blue); font-weight: bold; }
         .tab-item i { font-style: normal; font-size: 18px; margin-bottom: 1px; }
@@ -118,7 +120,6 @@
 </nav>
 
 <script>
-    // 1. 初始化 Supabase (填入你的資訊)
     const SUPABASE_URL = 'https://cmrxqxycjzvrljxbhsmc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -128,7 +129,6 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
-    // 分頁切換 (點擊明細時自動取消編輯)
     function switchPage(pageId) {
         if (pageId === 'page-list' && editIdx > -1) resetForm();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -139,47 +139,31 @@
         document.getElementById(pageId).scrollTop = 0;
     }
 
-    // 備份功能 (手機 -> 雲端)
     async function uploadToCloud() {
         if (records.length === 0) return alert('目前沒有紀錄可以備份喔！');
         const btn = document.getElementById('cloudBtn');
         btn.innerText = "備份中..."; btn.disabled = true;
         try {
-            // 先刪除雲端所有舊紀錄
             await _supabase.from('records').delete().neq('date', '1900-01-01');
-            // 寫入手機目前的紀錄
             const { error: insError } = await _supabase.from('records').insert(records);
             if (insError) throw insError;
-            alert('✅ 備份成功！');
-        } catch (e) {
-            alert('❌ 備份失敗：' + e.message);
-        } finally {
-            btn.innerText = "☁️ 備份"; btn.disabled = false;
-        }
+            alert('✅ 雲端備份成功！');
+        } catch (e) { alert('❌ 備份失敗：' + e.message); } finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
     }
 
-    // 下載功能 (雲端 -> 手機)
     async function fetchFromCloud() {
         try {
-            if (!confirm('確定要從雲端下載資料嗎？\n這將會覆蓋你這台手機目前的紀錄！')) return;
-            
+            if (!confirm('確定要從雲端下載嗎？這將覆蓋本機資料。')) return;
             const { data, error } = await _supabase.from('records').select('*').order('date', { ascending: false });
             if (error) throw error;
-
             if (data && data.length > 0) {
                 records = data;
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                render();
-                alert(`✅ 下載成功！共下載 ${data.length} 筆資料。`);
-            } else {
-                alert('☁️ 雲端目前沒有任何資料。');
-            }
-        } catch (e) {
-            alert('❌ 下載失敗：' + e.message);
-        }
+                render(); alert(`✅ 下載成功！共 ${data.length} 筆資料。`);
+            } else { alert('☁️ 雲端無資料。'); }
+        } catch (e) { alert('❌ 下載失敗：' + e.message); }
     }
 
-    // --- 核心運算邏輯 ---
     function initSelectors() {
         const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
@@ -220,10 +204,33 @@
         let total = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         document.getElementById('header').className = "header-card " + (total > 0 ? 'positive' : (total < 0 ? 'negative' : 'neutral'));
         document.getElementById('monthTotal').innerText = (total >= 0 ? '+' : '') + total.toLocaleString();
-        list.innerHTML = filtered.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#8E8E93; padding:30px 0;">無紀錄</td></tr>' : 
+
+        list.innerHTML = filtered.length === 0 ? '<tr><td style="text-align:center; color:#8E8E93; padding:30px 0;">無紀錄</td></tr>' : 
             filtered.map(r => {
                 const idx = records.indexOf(r); const amt = parseFloat(r.amount) || 0;
-                return `<tr><td><small style="color:#8E8E93">${r.date.split('-')[2]}日</small><br><strong>${r.type}</strong></td><td style="font-size:12px; text-align:center;">${r.method}</td><td style="text-align:right;"><span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold;">${amt>=0?'+'+amt:amt}</span><br><a href="javascript:void(0)" class="edit-link" onclick="prepareEdit(${idx})">修改</a></td></tr>`;
+                return `
+                <tr>
+                    <td style="padding: 12px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <small style="color:#8E8E93">${r.date.split('-')[2]}日</small>
+                                <strong style="font-size: 16px; margin-left: 5px;">${r.type}</strong>
+                                <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                    <span>方式: ${r.method || ''}</span> | 
+                                    <span>地點: ${r.location || ''}</span>
+                                </div>
+                                ${r.note ? `<div style="font-size: 11px; color: #999; margin-top: 2px;">📝 ${r.note}</div>` : ''}
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="color:${amt>=0?'var(--ios-green)':'var(--ios-red)'}; font-weight:bold; font-size: 16px;">
+                                    ${amt >= 0 ? '+' + amt.toLocaleString() : amt.toLocaleString()}
+                                </span>
+                                <br>
+                                <a href="javascript:void(0)" class="edit-link" style="margin-top: 8px;" onclick="prepareEdit(${idx})">修改</a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
             }).join('');
     }
 
