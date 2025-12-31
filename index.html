@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
-    <link rel="apple-touch-icon" href="icon.png">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -18,7 +17,6 @@
             --tab-height: 65px; 
         }
 
-        /* 修正鍵盤吃畫面核心：移除 height: 100vh，允許 body 自然伸縮滾動 */
         body { 
             font-family: -apple-system, system-ui, sans-serif; 
             background: var(--ios-bg); 
@@ -26,7 +24,6 @@
             min-height: 100vh;
         }
         
-        /* 頂部瀏海區域處理 */
         .safe-area-spacer { 
             padding-top: env(safe-area-inset-top); 
             background: var(--ios-bg);
@@ -35,7 +32,6 @@
 
         .page { 
             display: none; 
-            /* 底部預留 Tab Bar 與安全區域空間 */
             padding: 10px 12px calc(var(--tab-height) + 60px + env(safe-area-inset-bottom)) 12px; 
             box-sizing: border-box; 
         }
@@ -50,7 +46,6 @@
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 8px 0 2px 2px; }
         
-        /* input 加入 scroll-margin，讓鍵盤彈起自動滾動時不會被遮擋 */
         input, select { 
             width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; 
             font-size: 16px; box-sizing: border-box; background: white; -webkit-appearance: none; 
@@ -117,7 +112,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
             <div style="display: flex; gap: 8px;">
-                <button onclick="fetchFromCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📥 下載</button>
+                <button id="fetchBtn" onclick="fetchFromCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📥 下載</button>
                 <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;"☁️ 備份</button>
             </div>
         </div>
@@ -161,43 +156,45 @@
         window.scrollTo(0,0);
     }
 
-    // --- 雲端備份：帶入暗號進行安全性存取 ---
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
+        const originalText = btn.innerText;
         btn.innerText = "..."; btn.disabled = true;
         try {
-            // 下載雲端屬於該暗號的資料進行合併
-            const { data: cloudData } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
-            
+            const { data: cloudData, error: fetchErr } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
+            if(fetchErr) throw fetchErr;
+
             let combinedMap = new Map();
             (cloudData || []).forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
             records.forEach(r => {
-                r.owner_key = MY_SECRET_KEY; // 存往雲端前補上暗號
+                r.owner_key = MY_SECRET_KEY;
                 combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r);
             });
             
             const finalData = Array.from(combinedMap.values());
-            
-            // 覆蓋寫入：先刪除舊的 (僅限暗號相符者)，再插入
             await _supabase.from('records').delete().eq('owner_key', MY_SECRET_KEY);
-            await _supabase.from('records').insert(finalData);
+            const { error: insErr } = await _supabase.from('records').insert(finalData);
+            if(insErr) throw insErr;
             
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render(); alert("✅ 備份成功");
-        } catch (e) { console.error(e); alert("❌ 備份失敗，請確認資料庫已新增 owner_key 欄位"); } finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
+        } catch (e) { 
+            console.error(e); 
+            alert("❌ 備份失敗: " + (e.message || "請檢查 owner_key 欄位")); 
+        } finally { 
+            btn.innerText = originalText; btn.disabled = false; 
+        }
     }
 
-    // --- 從雲端同步：僅抓取符合暗號的資料 ---
     async function fetchFromCloud() {
+        const btn = document.getElementById('fetchBtn');
+        const originalText = btn.innerText;
         try {
             if (!confirm('從雲端同步戰績？')) return;
-            const { data } = await _supabase
-                .from('records')
-                .select('*')
-                .eq('owner_key', MY_SECRET_KEY)
-                .order('date', { ascending: false });
-                
+            btn.innerText = "..."; btn.disabled = true;
+            const { data, error } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY).order('date', { ascending: false });
+            if (error) throw error;
             if (data) {
                 let combinedMap = new Map();
                 records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
@@ -206,7 +203,11 @@
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
                 render(); alert("✅ 同步完成");
             }
-        } catch (e) { alert("❌ 下載失敗"); }
+        } catch (e) { 
+            console.error(e); alert("❌ 下載失敗"); 
+        } finally {
+            btn.innerText = originalText; btn.disabled = false;
+        }
     }
 
     function handleSave() {
@@ -217,7 +218,7 @@
             date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
             amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value,
-            owner_key: MY_SECRET_KEY // 存入本地時也帶著暗號
+            owner_key: MY_SECRET_KEY
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
@@ -230,8 +231,6 @@
         document.getElementById('amount').value = r.amount;
         document.getElementById('location').value = r.location; 
         document.getElementById('note').value = r.note;
-        
-        // 解析並回填結算方式
         if (r.method && r.method.includes('(')) {
             const parts = r.method.split('(');
             document.getElementById('methodSelect').value = parts[0];
@@ -240,7 +239,6 @@
             document.getElementById('methodSelect').value = r.method || '底/台';
             document.getElementById('methodDetail').value = '';
         }
-
         document.getElementById('submitBtn').innerText = "儲存修改"; 
         document.getElementById('editStatus').style.display = "block"; 
         document.getElementById('deleteBtn').style.display = "block"; 
