@@ -131,7 +131,7 @@
     const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- 唯一新增的暗號設定 ---
+    // --- 唯一暗號設定 ---
     const MY_SECRET_KEY = 'mj777'; 
 
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
@@ -150,9 +150,10 @@
         document.getElementById(pageId).scrollTop = 0;
     }
 
-    // --- 雲端備份功能 (加入暗號綁定與狀態修復) ---
+    // --- 雲端備份功能 (已合併防卡死與暗號綁定) ---
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
+        const originalText = "☁️ 備份";
         btn.innerText = "..."; btn.disabled = true;
         try {
             const { data: cloudData } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
@@ -168,13 +169,18 @@
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render(); alert("✅ 備份成功");
-        } catch (e) { alert("❌ 失敗"); } 
-        finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
+        } catch (e) { 
+            console.error(e);
+            alert("❌ 失敗"); 
+        } finally { 
+            btn.innerText = originalText; 
+            btn.disabled = false; 
+        }
     }
 
     async function fetchFromCloud() {
         const btn = document.getElementById('fetchBtn');
-        const originalText = btn ? btn.innerText : "📥 下載";
+        const originalText = "📥 下載";
         try {
             if (!confirm('下載雲端戰績？')) return;
             if (btn) { btn.innerText = "..."; btn.disabled = true; }
@@ -187,11 +193,15 @@
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
                 render(); alert("✅ 下載完成");
             }
-        } catch (e) { alert("❌ 失敗"); }
-        finally { if (btn) { btn.innerText = originalText; btn.disabled = false; } }
+        } catch (e) { 
+            console.error(e);
+            alert("❌ 失敗"); 
+        } finally { 
+            if (btn) { btn.innerText = originalText; btn.disabled = false; }
+        }
     }
 
-    // --- 介面渲染邏輯 ---
+    // --- 其餘介面渲染邏輯 ---
     function initSelectors() {
         const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
@@ -246,7 +256,7 @@
             date: selectedDate, type: document.getElementById('type').value || '未分類',
             method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
             amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value,
-            owner_key: MY_SECRET_KEY // 儲存時同步綁定暗號
+            owner_key: MY_SECRET_KEY
         };
         if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
         localStorage.setItem('pokerRecords', JSON.stringify(records));
@@ -261,7 +271,6 @@
         document.getElementById('amount').value = r.amount;
         document.getElementById('location').value = r.location; 
         document.getElementById('note').value = r.note;
-        
         if (r.method && r.method.includes('(')) {
             const parts = r.method.split('(');
             document.getElementById('methodSelect').value = parts[0];
@@ -270,7 +279,6 @@
             document.getElementById('methodSelect').value = r.method || '底/台';
             document.getElementById('methodDetail').value = '';
         }
-
         document.getElementById('submitBtn').innerText = "儲存修改"; 
         document.getElementById('editStatus').style.display = "block"; 
         document.getElementById('deleteBtn').style.display = "block"; 
