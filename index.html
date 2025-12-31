@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戰績表">
+    <link rel="apple-touch-icon" href="icon.png">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -14,26 +15,23 @@
         :root { 
             --ios-blue: #007AFF; --ios-red: #FF3B30; --ios-green: #34C759; --ios-bg: #F2F2F7; 
             --ios-orange: #FF9500;
-            --tab-height: 65px; 
+            --tab-height: 60px; 
         }
-
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: var(--ios-bg); 
-            margin: 0; padding: 0; 
-            min-height: 100vh;
-        }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--ios-bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         .safe-area-spacer { 
             padding-top: env(safe-area-inset-top); 
             background: var(--ios-bg);
-            position: sticky; top: 0; z-index: 1000;
+            flex-shrink: 0; 
         }
 
         .page { 
             display: none; 
-            padding: 10px 12px calc(var(--tab-height) + 60px + env(safe-area-inset-bottom)) 12px; 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 10px 12px calc(var(--tab-height) + 40px + env(safe-area-inset-bottom)) 12px; 
             box-sizing: border-box; 
+            -webkit-overflow-scrolling: touch; 
         }
         .page.active { display: block; }
         
@@ -44,13 +42,8 @@
         .total-val { font-size: 1.8rem; font-weight: bold; }
 
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 8px 0 2px 2px; }
-        
-        input, select { 
-            width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; 
-            font-size: 16px; box-sizing: border-box; background: white; -webkit-appearance: none; 
-            scroll-margin-top: 100px;
-        }
+        label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; -webkit-appearance: none; }
 
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
         .cal-day { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; position: relative; font-weight: 500; }
@@ -58,7 +51,7 @@
         .cal-selected { background: var(--ios-blue) !important; color: white !important; font-weight: bold; }
         .has-record { color: var(--ios-orange); font-weight: 800; }
 
-        .btn-container { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-container { display: flex; gap: 10px; margin-top: 15px; }
         .main-btn { flex: 2; background: var(--ios-blue); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; }
         .del-btn-edit { flex: 1; background: white; color: var(--ios-red); border: 1.5px solid var(--ios-red); padding: 14px; border-radius: 10px; font-size: 17px; font-weight: bold; }
         .cancel-link { display: block; text-align: center; margin-top: 25px; margin-bottom: 20px; color: var(--ios-blue); font-size: 15px; text-decoration: none; padding: 10px; }
@@ -138,7 +131,7 @@
     const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- 安全驗證暗號 (務必與 Supabase RLS 策略一致) ---
+    // --- 唯一新增的暗號設定 ---
     const MY_SECRET_KEY = 'mj777'; 
 
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
@@ -146,6 +139,7 @@
     let selectedDate = new Date().toISOString().split('T')[0];
     let editIdx = -1;
 
+    // --- 頁面控制 ---
     function switchPage(pageId) {
         if (pageId === 'page-list' && editIdx > -1) resetForm();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -153,98 +147,64 @@
         document.getElementById(pageId).classList.add('active');
         document.getElementById('tab-' + pageId.split('-')[1]).classList.add('active');
         initSelectors(); render();
-        window.scrollTo(0,0);
+        document.getElementById(pageId).scrollTop = 0;
     }
 
+    // --- 雲端備份功能 (加入暗號綁定與狀態修復) ---
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
-        const originalText = btn.innerText;
         btn.innerText = "..."; btn.disabled = true;
         try {
-            const { data: cloudData, error: fetchErr } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
-            if(fetchErr) throw fetchErr;
-
+            const { data: cloudData } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
             let combinedMap = new Map();
             (cloudData || []).forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
             records.forEach(r => {
-                r.owner_key = MY_SECRET_KEY;
+                r.owner_key = MY_SECRET_KEY; // 綁定暗號
                 combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r);
             });
-            
             const finalData = Array.from(combinedMap.values());
             await _supabase.from('records').delete().eq('owner_key', MY_SECRET_KEY);
-            const { error: insErr } = await _supabase.from('records').insert(finalData);
-            if(insErr) throw insErr;
-            
+            await _supabase.from('records').insert(finalData);
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render(); alert("✅ 備份成功");
-        } catch (e) { 
-            console.error(e); 
-            alert("❌ 備份失敗: " + (e.message || "請檢查 owner_key 欄位")); 
-        } finally { 
-            btn.innerText = originalText; btn.disabled = false; 
-        }
+        } catch (e) { alert("❌ 失敗"); } 
+        finally { btn.innerText = "☁️ 備份"; btn.disabled = false; }
     }
 
     async function fetchFromCloud() {
         const btn = document.getElementById('fetchBtn');
-        const originalText = btn.innerText;
+        const originalText = btn ? btn.innerText : "📥 下載";
         try {
-            if (!confirm('從雲端同步戰績？')) return;
-            btn.innerText = "..."; btn.disabled = true;
-            const { data, error } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY).order('date', { ascending: false });
-            if (error) throw error;
+            if (!confirm('下載雲端戰績？')) return;
+            if (btn) { btn.innerText = "..."; btn.disabled = true; }
+            const { data } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY).order('date', { ascending: false });
             if (data) {
                 let combinedMap = new Map();
                 records.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 data.forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
                 records = Array.from(combinedMap.values()).sort((a, b) => new Date(b.date) - new Date(a.date));
                 localStorage.setItem('pokerRecords', JSON.stringify(records));
-                render(); alert("✅ 同步完成");
+                render(); alert("✅ 下載完成");
             }
-        } catch (e) { 
-            console.error(e); alert("❌ 下載失敗"); 
-        } finally {
-            btn.innerText = originalText; btn.disabled = false;
-        }
+        } catch (e) { alert("❌ 失敗"); }
+        finally { if (btn) { btn.innerText = originalText; btn.disabled = false; } }
     }
 
-    function handleSave() {
-        const amtInput = document.getElementById('amount').value;
-        if(!amtInput) return alert('請輸入勝敗金額');
-        const amt = parseFloat(amtInput.replace(/,/g, ''));
-        const data = {
-            date: selectedDate, type: document.getElementById('type').value || '未分類',
-            method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
-            amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value,
-            owner_key: MY_SECRET_KEY
-        };
-        if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
-        localStorage.setItem('pokerRecords', JSON.stringify(records));
-        resetForm(); setTimeout(() => { switchPage('page-list'); }, 50);
+    // --- 介面渲染邏輯 ---
+    function initSelectors() {
+        const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
+        if(!yearSel) return;
+        const years = [...new Set(records.map(r => r.date.split('-')[0]))];
+        const cy = new Date().getFullYear().toString(); if(!years.includes(cy)) years.push(cy);
+        yearSel.innerHTML = years.sort((a,b)=>b-a).map(y => `<option value="${y}">${y}年</option>`).join('');
+        yearSel.value = viewDate.getFullYear();
+        monthSel.innerHTML = Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0')).map(m => `<option value="${m}">${parseInt(m)}月</option>`).join('');
+        monthSel.value = String(viewDate.getMonth() + 1).padStart(2, '0');
     }
 
-    function prepareEdit(idx) {
-        editIdx = idx; const r = records[idx]; selectedDate = r.date;
-        document.getElementById('type').value = r.type; 
-        document.getElementById('amount').value = r.amount;
-        document.getElementById('location').value = r.location; 
-        document.getElementById('note').value = r.note;
-        if (r.method && r.method.includes('(')) {
-            const parts = r.method.split('(');
-            document.getElementById('methodSelect').value = parts[0];
-            document.getElementById('methodDetail').value = parts[1].replace(')', '');
-        } else {
-            document.getElementById('methodSelect').value = r.method || '底/台';
-            document.getElementById('methodDetail').value = '';
-        }
-        document.getElementById('submitBtn').innerText = "儲存修改"; 
-        document.getElementById('editStatus').style.display = "block"; 
-        document.getElementById('deleteBtn').style.display = "block"; 
-        document.getElementById('cancelEdit').style.display = "block";
-        switchPage('page-form');
-    }
+    function updateListFilter() { viewDate = new Date(`${document.getElementById('selectYear').value}-${document.getElementById('selectMonth').value}-01`); render(); }
+    function changeMonth(s) { viewDate.setMonth(viewDate.getMonth() + s); render(); }
 
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
@@ -277,19 +237,47 @@
             }).join('');
     }
 
-    function initSelectors() {
-        const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
-        if(!yearSel) return;
-        const years = [...new Set(records.map(r => r.date.split('-')[0]))];
-        const cy = new Date().getFullYear().toString(); if(!years.includes(cy)) years.push(cy);
-        yearSel.innerHTML = years.sort((a,b)=>b-a).map(y => `<option value="${y}">${y}年</option>`).join('');
-        yearSel.value = viewDate.getFullYear();
-        monthSel.innerHTML = Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0')).map(m => `<option value="${m}">${parseInt(m)}月</option>`).join('');
-        monthSel.value = String(viewDate.getMonth() + 1).padStart(2, '0');
+    // --- 資料存取邏輯 ---
+    function handleSave() {
+        const amtInput = document.getElementById('amount').value;
+        if(!amtInput) return alert('請輸入勝敗金額');
+        const amt = parseFloat(amtInput.replace(/,/g, ''));
+        const data = {
+            date: selectedDate, type: document.getElementById('type').value || '未分類',
+            method: document.getElementById('methodDetail').value ? `${document.getElementById('methodSelect').value}(${document.getElementById('methodDetail').value})` : document.getElementById('methodSelect').value,
+            amount: amt, location: document.getElementById('location').value, note: document.getElementById('note').value,
+            owner_key: MY_SECRET_KEY // 儲存時同步綁定暗號
+        };
+        if(editIdx > -1) records[editIdx] = data; else records.unshift(data);
+        localStorage.setItem('pokerRecords', JSON.stringify(records));
+        resetForm(); setTimeout(() => { switchPage('page-list'); }, 50);
     }
-    function updateListFilter() { viewDate = new Date(`${document.getElementById('selectYear').value}-${document.getElementById('selectMonth').value}-01`); render(); }
-    function changeMonth(s) { viewDate.setMonth(viewDate.getMonth() + s); render(); }
+
     function handleDelete() { if(confirm('確定刪除？')) { records.splice(editIdx, 1); localStorage.setItem('pokerRecords', JSON.stringify(records)); resetForm(); } }
+
+    function prepareEdit(idx) {
+        editIdx = idx; const r = records[idx]; selectedDate = r.date;
+        document.getElementById('type').value = r.type; 
+        document.getElementById('amount').value = r.amount;
+        document.getElementById('location').value = r.location; 
+        document.getElementById('note').value = r.note;
+        
+        if (r.method && r.method.includes('(')) {
+            const parts = r.method.split('(');
+            document.getElementById('methodSelect').value = parts[0];
+            document.getElementById('methodDetail').value = parts[1].replace(')', '');
+        } else {
+            document.getElementById('methodSelect').value = r.method || '底/台';
+            document.getElementById('methodDetail').value = '';
+        }
+
+        document.getElementById('submitBtn').innerText = "儲存修改"; 
+        document.getElementById('editStatus').style.display = "block"; 
+        document.getElementById('deleteBtn').style.display = "block"; 
+        document.getElementById('cancelEdit').style.display = "block";
+        switchPage('page-form');
+    }
+
     function resetForm() {
         editIdx = -1; ['type','amount','location','note','methodDetail'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('submitBtn').innerText = "儲存戰績";
