@@ -27,6 +27,21 @@
         .neutral { background-color: var(--ios-blue); }
         .total-val { font-size: 1.8rem; font-weight: bold; }
         .card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(15px); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        
+        /* 修正按鈕消失的關鍵樣式 */
+        .cloud-btn-group { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+        .cloud-btn-group button { 
+            background: rgba(255,255,255,0.2); 
+            border: 0.5px solid white; 
+            color: white; 
+            padding: 6px 8px; 
+            border-radius: 12px; 
+            font-size: 11px; 
+            min-width: 65px; /* 固定寬度防止消失 */
+            white-space: nowrap; /* 防止文字閃爍跳行 */
+            text-align: center;
+        }
+
         label { font-size: 0.75rem; color: #8E8E93; display: block; margin: 5px 0 2px 2px; }
         input, select { width: 100%; padding: 12px; border: 1px solid #C6C6C8; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: white; -webkit-appearance: none; }
         #calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
@@ -85,9 +100,9 @@
     <div id="header" class="header-card neutral">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span id="dispMonthLabel" style="font-size: 0.8rem;"></span>
-            <div style="display: flex; gap: 8px;">
-                <button id="fetchBtn" onclick="fetchFromCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;">📥 下載</button>
-                <button id="cloudBtn" onclick="uploadToCloud()" style="background: rgba(255,255,255,0.2); border: 0.5px solid white; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px;"☁️ 備份</button>
+            <div class="cloud-btn-group">
+                <button id="fetchBtn" onclick="fetchFromCloud()">📥 下載</button>
+                <button id="cloudBtn" onclick="uploadToCloud()"☁️ 備份</button>
             </div>
         </div>
         <div class="total-val" id="monthTotal">0</div>
@@ -111,8 +126,6 @@
     const SUPABASE_URL = 'https://cmrxqxycjzvrljxbhsmc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_tS0m4qdiB9xDngRVduziTg_8lVuMJnR';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // --- 唯一暗號設定 ---
     const MY_SECRET_KEY = 'mj777'; 
 
     let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
@@ -129,38 +142,27 @@
         initSelectors(); render();
     }
 
-    // --- 雲端備份功能：修正消失問題 ---
     async function uploadToCloud() {
         const btn = document.getElementById('cloudBtn');
         if (!btn) return;
-        
-        btn.innerText = "⏳"; // 改用 Emoji 避免文字太長
+        btn.innerText = "⏳..."; 
         btn.disabled = true;
-        
         try {
-            // 抓取雲端資料
             const { data: cloudData } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY);
             let combinedMap = new Map();
             (cloudData || []).forEach(r => combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r));
-            
             records.forEach(r => {
                 r.owner_key = MY_SECRET_KEY; 
                 combinedMap.set(`${r.date}-${r.type}-${r.amount}-${r.note}`, r);
             });
-            
             const finalData = Array.from(combinedMap.values());
-            
-            // 覆蓋雲端
             await _supabase.from('records').delete().eq('owner_key', MY_SECRET_KEY);
             await _supabase.from('records').insert(finalData);
-            
             records = finalData.sort((a, b) => new Date(b.date) - new Date(a.date));
             localStorage.setItem('pokerRecords', JSON.stringify(records));
             render(); alert("✅ 備份成功");
-        } catch (e) { 
-            alert("❌ 備份失敗"); 
-        } finally { 
-            // 強制恢復圖示與文字
+        } catch (e) { alert("❌ 備份失敗"); } 
+        finally { 
             btn.innerText = "☁️ 備份"; 
             btn.disabled = false; 
         }
@@ -170,8 +172,7 @@
         const btn = document.getElementById('fetchBtn');
         try {
             if (!confirm('下載雲端戰績？')) return;
-            if (btn) { btn.innerText = "⏳"; btn.disabled = true; }
-            
+            if (btn) { btn.innerText = "⏳..."; btn.disabled = true; }
             const { data } = await _supabase.from('records').select('*').eq('owner_key', MY_SECRET_KEY).order('date', { ascending: false });
             if (data) {
                 let combinedMap = new Map();
@@ -185,7 +186,7 @@
         finally { if (btn) { btn.innerText = "📥 下載"; btn.disabled = false; } }
     }
 
-    // --- 其餘邏輯保持不變 ---
+    // --- 其餘邏輯保持原樣 ---
     function initSelectors() {
         const yearSel = document.getElementById('selectYear'); const monthSel = document.getElementById('selectMonth');
         if(!yearSel) return;
